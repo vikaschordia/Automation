@@ -1,0 +1,62 @@
+import { describe, it, expect } from "vitest";
+import { assertAdmin, assertTaskFieldsEditable, assertOwnsTask } from "@/lib/rbac";
+import { ApiError } from "@/lib/session";
+
+describe("assertAdmin", () => {
+  it("passes silently for ADMIN", () => {
+    expect(() => assertAdmin("ADMIN")).not.toThrow();
+  });
+
+  it("throws a 403 ApiError for EMPLOYEE", () => {
+    try {
+      assertAdmin("EMPLOYEE");
+      throw new Error("expected assertAdmin to throw");
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError);
+      expect((err as ApiError).status).toBe(403);
+    }
+  });
+});
+
+describe("assertTaskFieldsEditable", () => {
+  it("lets an ADMIN edit any field, including admin-only ones", () => {
+    expect(() => assertTaskFieldsEditable("ADMIN", ["priority", "dueDate", "assignedToId"])).not.toThrow();
+  });
+
+  it("lets an EMPLOYEE edit the allowed subset (status, progress, remarks, completedDate)", () => {
+    expect(() => assertTaskFieldsEditable("EMPLOYEE", ["status", "progressPercent", "remarks"])).not.toThrow();
+  });
+
+  it("blocks an EMPLOYEE from editing admin-only fields like priority or dueDate", () => {
+    expect(() => assertTaskFieldsEditable("EMPLOYEE", ["priority"])).toThrow(ApiError);
+    expect(() => assertTaskFieldsEditable("EMPLOYEE", ["dueDate"])).toThrow(ApiError);
+  });
+
+  it("blocks the whole patch if even one field is disallowed, not just the offending field", () => {
+    try {
+      assertTaskFieldsEditable("EMPLOYEE", ["status", "priority"]);
+      throw new Error("expected assertTaskFieldsEditable to throw");
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError);
+      expect((err as ApiError).message).toContain("priority");
+    }
+  });
+});
+
+describe("assertOwnsTask", () => {
+  it("lets an ADMIN act on any task regardless of assignee", () => {
+    expect(() => assertOwnsTask("ADMIN", null, "employee-123")).not.toThrow();
+  });
+
+  it("lets an EMPLOYEE act on their own task", () => {
+    expect(() => assertOwnsTask("EMPLOYEE", "employee-123", "employee-123")).not.toThrow();
+  });
+
+  it("blocks an EMPLOYEE from acting on someone else's task", () => {
+    expect(() => assertOwnsTask("EMPLOYEE", "employee-123", "employee-456")).toThrow(ApiError);
+  });
+
+  it("blocks an EMPLOYEE with no linked employee profile", () => {
+    expect(() => assertOwnsTask("EMPLOYEE", null, "employee-456")).toThrow(ApiError);
+  });
+});

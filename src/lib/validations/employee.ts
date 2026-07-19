@@ -1,0 +1,19 @@
+import { z } from "zod";
+import { EMPLOYEE_STATUSES } from "@/lib/constants";
+
+export const employeeSchema = z.object({
+  employeeCode: z.string().trim().min(2, "Employee code is required").max(30),
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(120),
+  designation: z.string().trim().min(2, "Designation is required").max(120),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address"),
+  phone: z.string().trim().max(30).optional().or(z.literal("")),
+  status: z.enum(EMPLOYEE_STATUSES),
+  joiningDate: z.coerce.date(),
+  departmentId: z.string().min(1, "Department is required"),
+  companyId: z.string().min(1, "Company is required"),
+  managerId: z.string().optional().nullable(),
+  createLogin: z.boolean().optional(),
+  password: z.string().min(6, "Password must be at least 6 characters").optional().or(z.literal("")),
+});
+
+export type EmployeeInput = z.infer<typeof employeeSchema>;

@@ -1,0 +1,163 @@
+// Daily Task Tracker — Prisma schema (SQLite, local-only deployment)
+//
+// Enums are represented as plain String columns (not Prisma `enum` blocks) because the
+// SQLite connector does not support native enum types. The allowed values for each are
+// defined once in src/lib/constants.ts (TS union types + Zod enums) and validated at the
+// API boundary — Prisma/SQLite itself does not enforce them.
+//
+// Task.id is a plain autoincrement integer so the human-readable Task Number can be derived
+// as `TSK-` + id.toString().padStart(6, "0") at display time, with no extra counter table.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         String // ADMIN | EMPLOYEE
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  employeeId String?   @unique
+  employee   Employee? @relation("UserEmployee", fields: [employeeId], references: [id])
+
+  assignedTasks Task[]        @relation("AssignedBy")
+  taskHistory   TaskHistory[]
+
+  @@index([role])
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  departments Department[]
+  employees   Employee[]
+  tasks       Task[]
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employees Employee[]
+  tasks     Task[]
+
+  @@unique([name, companyId])
+  @@index([companyId])
+}
+
+model Employee {
+  id           String    @id @default(cuid())
+  employeeCode String    @unique
+  name         String
+  designation  String
+  email        String    @unique
+  phone        String?
+  status       String    @default("ACTIVE") // ACTIVE | INACTIVE
+  joiningDate  DateTime
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  companyId    String
+  company      Company    @relation(fields: [companyId], references: [id])
+
+  managerId String?
+  manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
+  reports   Employee[] @relation("EmployeeManager")
+
+  user          User?  @relation("UserEmployee")
+  assignedTasks Task[] @relation("AssignedTo")
+
+  @@index([departmentId])
+  @@index([companyId])
+  @@index([managerId])
+}
+
+model TaskCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  tasks Task[]
+}
+
+model Task {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  priority    String // P1_URGENT | P2_MEDIUM | P3_LOW
+  status      String   @default("PENDING") // PENDING | IN_PROGRESS | WAITING_APPROVAL | COMPLETED | DELAYED | CANCELLED | ON_HOLD
+
+  assignedDate   DateTime  @default(now())
+  dueDate        DateTime
+  completedDate  DateTime?
+
+  progressPercent Int     @default(0)
+  estimatedHours  Float?
+  actualHours     Float?
+  remarks         String?
+  tags            String  @default("[]") // JSON-encoded string[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  assignedToId String
+  assignedTo   Employee @relation("AssignedTo", fields: [assignedToId], references: [id])
+  assignedById String
+  assignedBy   User     @relation("AssignedBy", fields: [assignedById], references: [id])
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  companyId    String
+  company      Company    @relation(fields: [companyId], references: [id])
+  categoryId   String?
+  category     TaskCategory? @relation(fields: [categoryId], references: [id])
+
+  history TaskHistory[]
+
+  @@index([assignedToId, status])
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([dueDate])
+  @@index([priority])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model TaskHistory {
+  id        String   @id @default(cuid())
+  taskId    Int
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  changedById String
+  changedBy   User   @relation(fields: [changedById], references: [id])
+  action    String // CREATED | UPDATED | STATUS_CHANGED | COMPLETED | REOPENED
+  field     String?
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+  @@index([createdAt])
+}

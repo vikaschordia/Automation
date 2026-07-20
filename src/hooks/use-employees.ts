@@ -17,6 +17,7 @@ export interface EmployeeRow {
   managerId: string | null;
   company: { id: string; name: string };
   department: { id: string; name: string };
+  additionalCompanies: { id: string; name: string }[];
   manager: { id: string; name: string } | null;
   user: { id: string; isActive: boolean; lastLoginAt: string | null } | null;
   _count: { assignedTasks: number };

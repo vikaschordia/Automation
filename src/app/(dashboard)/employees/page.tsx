@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function EmployeesPage() {
   const [companyFilter, setCompanyFilter] = useState("all");
@@ -132,7 +133,21 @@ export default function EmployeesPage() {
                 </TableCell>
                 <TableCell>{e.designation}</TableCell>
                 <TableCell>
-                  <div className="leading-tight">{e.company.name}</div>
+                  <div className="flex items-center gap-1 leading-tight">
+                    {e.company.name}
+                    {e.additionalCompanies.length > 0 && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="cursor-default rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+                            +{e.additionalCompanies.length}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Also mapped to: {e.additionalCompanies.map((c) => c.name).join(", ")}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                   <div className="text-xs text-muted-foreground">{e.department.name}</div>
                 </TableCell>
                 <TableCell>

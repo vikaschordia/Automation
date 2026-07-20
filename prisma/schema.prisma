@@ -46,7 +46,9 @@ model Company {
   updatedAt DateTime @updatedAt
 
   departments Department[]
-  employees   Employee[]
+  employees   Employee[] @relation("EmployeePrimaryCompany")
+  // Employees mapped here in addition to their primary company (see Employee.additionalCompanies).
+  additionalEmployees Employee[] @relation("EmployeeAdditionalCompanies")
   tasks       Task[]
 }
 
@@ -81,7 +83,11 @@ model Employee {
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id])
   companyId    String
-  company      Company    @relation(fields: [companyId], references: [id])
+  company      Company    @relation("EmployeePrimaryCompany", fields: [companyId], references: [id])
+
+  // Companies this employee is also mapped to, beyond their primary company/department above —
+  // e.g. so they show up as assignable when a task is created under one of these companies.
+  additionalCompanies Company[] @relation("EmployeeAdditionalCompanies")
 
   managerId String?
   manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])

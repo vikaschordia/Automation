@@ -15,22 +15,28 @@ export async function GET(request: NextRequest) {
 
     const employees = await prisma.employee.findMany({
       where: {
-        companyId,
+        // A company filter matches an employee's primary company OR any company they're
+        // additionally mapped to — e.g. filtering "Beta Traders" should surface someone whose
+        // home company is Alpha Industries but who's also mapped to Beta Traders.
+        ...(companyId ? { OR: [{ companyId }, { additionalCompanies: { some: { id: companyId } } }] } : {}),
         departmentId,
         status: status ?? undefined,
-        OR: search
-          ? [
-              { name: { contains: search } },
-              { employeeCode: { contains: search } },
-              { email: { contains: search } },
-              { designation: { contains: search } },
-            ]
-          : undefined,
+        ...(search
+          ? {
+              OR: [
+                { name: { contains: search } },
+                { employeeCode: { contains: search } },
+                { email: { contains: search } },
+                { designation: { contains: search } },
+              ],
+            }
+          : {}),
       },
       orderBy: { name: "asc" },
       include: {
         company: { select: { id: true, name: true } },
         department: { select: { id: true, name: true } },
+        additionalCompanies: { select: { id: true, name: true }, orderBy: { name: "asc" } },
         manager: { select: { id: true, name: true } },
         user: { select: { id: true, isActive: true, lastLoginAt: true } },
         // Excludes soft-deleted tasks — otherwise this stays inflated forever, even after every
@@ -62,6 +68,10 @@ export async function POST(request: NextRequest) {
     if (codeOwner) return NextResponse.json({ error: `Employee code "${data.employeeCode}" is already in use` }, { status: 409 });
     if (emailOwner) return NextResponse.json({ error: `Email "${data.email}" is already in use` }, { status: 409 });
 
+    // Never let the primary company also be sent as an "additional" one — a client bug/replay
+    // shouldn't be able to produce a nonsensical self-referencing mapping.
+    const additionalCompanyIds = (data.additionalCompanyIds ?? []).filter((cid) => cid !== data.companyId);
+
     const employee = await prisma.$transaction(async (tx) => {
       const created = await tx.employee.create({
         data: {
@@ -75,6 +85,7 @@ export async function POST(request: NextRequest) {
           departmentId: data.departmentId,
           companyId: data.companyId,
           managerId: data.managerId || null,
+          additionalCompanies: additionalCompanyIds.length > 0 ? { connect: additionalCompanyIds.map((id) => ({ id })) } : undefined,
         },
       });
 

@@ -25,7 +25,11 @@ export async function getEmployeePerformanceReport(filters?: { companyId?: strin
   const employees = await prisma.employee.findMany({
     where: {
       status: "ACTIVE",
-      companyId: filters?.companyId,
+      // Matches primary company OR any additional company the employee is mapped to, same as the
+      // Employees list filter — an employee mapped into this company should show up in its report.
+      ...(filters?.companyId
+        ? { OR: [{ companyId: filters.companyId }, { additionalCompanies: { some: { id: filters.companyId } } }] }
+        : {}),
       departmentId: filters?.departmentId,
     },
     include: {

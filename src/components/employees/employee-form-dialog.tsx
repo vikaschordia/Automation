@@ -62,6 +62,7 @@ export function EmployeeFormDialog({
       joiningDate: new Date(),
       departmentId: "",
       companyId: "",
+      additionalCompanyIds: [],
       managerId: null,
       createLogin: true,
       password: "",
@@ -90,6 +91,7 @@ export function EmployeeFormDialog({
               joiningDate: new Date(employee.joiningDate),
               departmentId: employee.departmentId,
               companyId: employee.companyId,
+              additionalCompanyIds: employee.additionalCompanies.map((c) => c.id),
               managerId: employee.managerId,
               createLogin: false,
               password: "",
@@ -104,6 +106,7 @@ export function EmployeeFormDialog({
               joiningDate: new Date(),
               departmentId: "",
               companyId: "",
+              additionalCompanyIds: [],
               managerId: null,
               createLogin: true,
               password: "",
@@ -129,7 +132,9 @@ export function EmployeeFormDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit employee" : "Add employee"}</DialogTitle>
-          <DialogDescription>Employee master data — one employee belongs to one company and department.</DialogDescription>
+          <DialogDescription>
+            Employee master data — one primary company and department, plus any additional companies they&apos;re mapped to.
+          </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] pr-4">
           <form id="employee-form" className="flex flex-col gap-4 pb-1" onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -189,6 +194,8 @@ export function EmployeeFormDialog({
                   onValueChange={(v) => {
                     setValue("companyId", v, { shouldValidate: true });
                     setValue("departmentId", "");
+                    // Keep the primary company out of the "also mapped to" list if it was there.
+                    setValue("additionalCompanyIds", (watch("additionalCompanyIds") ?? []).filter((id) => id !== v));
                   }}
                 >
                   <SelectTrigger className="w-full">
@@ -223,6 +230,43 @@ export function EmployeeFormDialog({
                   </SelectContent>
                 </Select>
                 {errors.departmentId && <p className="text-xs text-destructive">{errors.departmentId.message}</p>}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label>Also mapped to (optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Other companies this employee can be assigned tasks under, in addition to their primary company above.
+              </p>
+              <div className="flex flex-col gap-1.5 rounded-md border p-2.5">
+                {(companies ?? []).filter((c) => c.id !== companyId).length === 0 && (
+                  <p className="py-1 text-center text-xs text-muted-foreground">
+                    {companyId ? "No other companies to map." : "Select a primary company first."}
+                  </p>
+                )}
+                {(companies ?? [])
+                  .filter((c) => c.id !== companyId)
+                  .map((c) => {
+                    const selected = watch("additionalCompanyIds") ?? [];
+                    const checked = selected.includes(c.id);
+                    return (
+                      <div key={c.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`additional-company-${c.id}`}
+                          checked={checked}
+                          onCheckedChange={(v) =>
+                            setValue(
+                              "additionalCompanyIds",
+                              v ? [...selected, c.id] : selected.filter((id) => id !== c.id),
+                            )
+                          }
+                        />
+                        <Label htmlFor={`additional-company-${c.id}`} className="cursor-pointer text-sm font-normal">
+                          {c.name}
+                        </Label>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
 

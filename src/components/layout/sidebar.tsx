@@ -11,6 +11,7 @@ import {
   FileBarChart2,
   ClipboardCheck,
   ListTodo,
+  Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/constants";
@@ -27,6 +28,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/companies", label: "Companies", icon: Building2 },
   { href: "/departments", label: "Departments", icon: Network },
   { href: "/employees", label: "Employees", icon: Users },
+  { href: "/categories", label: "Categories", icon: Tag },
   { href: "/reports", label: "Reports", icon: FileBarChart2 },
 ];
 

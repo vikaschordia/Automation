@@ -11,6 +11,10 @@ export const employeeSchema = z.object({
   joiningDate: z.coerce.date(),
   departmentId: z.string().min(1, "Department is required"),
   companyId: z.string().min(1, "Company is required"),
+  // Companies this employee is also mapped to, beyond their primary companyId above — e.g. so
+  // they can be assigned tasks under those companies too. Never includes companyId itself; that's
+  // enforced server-side rather than trusted from the client.
+  additionalCompanyIds: z.array(z.string()).max(50).optional(),
   managerId: z.string().optional().nullable(),
   createLogin: z.boolean().optional(),
   password: z.string().min(6, "Password must be at least 6 characters").optional().or(z.literal("")),

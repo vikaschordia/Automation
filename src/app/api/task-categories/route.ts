@@ -6,7 +6,10 @@ import { taskCategorySchema } from "@/lib/validations/task-category";
 export async function GET() {
   try {
     await requireSession();
-    const categories = await prisma.taskCategory.findMany({ orderBy: { name: "asc" } });
+    const categories = await prisma.taskCategory.findMany({
+      orderBy: { name: "asc" },
+      include: { _count: { select: { tasks: true } } },
+    });
     return NextResponse.json({ categories });
   } catch (error) {
     return apiErrorResponse(error);

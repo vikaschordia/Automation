@@ -15,6 +15,7 @@ export async function GET(_request: NextRequest, { params }: { params: Params })
       include: {
         company: { select: { id: true, name: true } },
         department: { select: { id: true, name: true } },
+        additionalCompanies: { select: { id: true, name: true }, orderBy: { name: "asc" } },
         manager: { select: { id: true, name: true } },
         user: { select: { id: true, isActive: true, lastLoginAt: true } },
       },
@@ -35,20 +36,27 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
     }
-    const data = parsed.data;
+    const { additionalCompanyIds, ...data } = parsed.data;
 
     if (data.managerId === id) {
       return NextResponse.json({ error: "An employee cannot be their own manager" }, { status: 400 });
     }
 
     const employee = await prisma.$transaction(async (tx) => {
+      // additionalCompanyIds must never include the (possibly just-changed) primary company.
+      const primaryCompanyId = data.companyId ?? (await tx.employee.findUniqueOrThrow({ where: { id }, select: { companyId: true } })).companyId;
+
       const updated = await tx.employee.update({
         where: { id },
         data: {
           ...data,
           phone: data.phone === "" ? null : data.phone,
           managerId: data.managerId === "" ? null : data.managerId,
+          ...(additionalCompanyIds !== undefined
+            ? { additionalCompanies: { set: additionalCompanyIds.filter((cid) => cid !== primaryCompanyId).map((cid) => ({ id: cid })) } }
+            : {}),
         },
+        include: { additionalCompanies: { select: { id: true, name: true } } },
       });
       if (data.status || data.email) {
         await tx.user.updateMany({

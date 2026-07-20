@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FileSpreadsheet, Users2 } from "lucide-react";
+import { Download, FileSpreadsheet, Users2, AlarmClockOff } from "lucide-react";
 import { useTasks, buildTaskQuery, type TaskFilters as TaskFiltersState } from "@/hooks/use-tasks";
 import { useEmployeePerformanceReport } from "@/hooks/use-reports";
 import { useCompanies } from "@/hooks/use-companies";
@@ -34,6 +34,16 @@ export default function ReportsPage() {
   // long-since-completed tasks sort first.
   const { data, isLoading } = useTasks({ ...filters, sortBy: "dueDate", sortDir: "desc" });
 
+  const [delayFilters, setDelayFilters] = useState<TaskFiltersState>({ page: 1, pageSize: 10 });
+  const { data: delayData, isLoading: delayLoading } = useTasks({ ...delayFilters, sortBy: "dueDate", sortDir: "desc" });
+
+  function applyDelayPreset(days: number) {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - days);
+    setDelayFilters((f) => ({ ...f, dueFrom: toDateInputValue(from), dueTo: toDateInputValue(to), page: 1 }));
+  }
+
   const [perfCompany, setPerfCompany] = useState("all");
   const [perfDept, setPerfDept] = useState("all");
   const { data: companies } = useCompanies();
@@ -58,6 +68,9 @@ export default function ReportsPage() {
         <TabsList>
           <TabsTrigger value="tasks" className="gap-1.5">
             <FileSpreadsheet className="size-3.5" /> Task Reports
+          </TabsTrigger>
+          <TabsTrigger value="delay" className="gap-1.5">
+            <AlarmClockOff className="size-3.5" /> Task Delay Report
           </TabsTrigger>
           <TabsTrigger value="performance" className="gap-1.5">
             <Users2 className="size-3.5" /> Employee Performance
@@ -136,6 +149,94 @@ export default function ReportsPage() {
                     </TableCell>
                     <TableCell>{formatDate(t.dueDate)}</TableCell>
                     <TableCell className="text-right">{t.delayDays > 0 ? <span className="font-medium text-red-600">{t.delayDays}d</span> : "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="delay" className="mt-4">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Quick range:</span>
+            {DATE_PRESETS.map((p) => (
+              <Button key={p.label} variant="outline" size="sm" onClick={() => applyDelayPreset(p.days)}>
+                {p.label}
+              </Button>
+            ))}
+            <Button variant="ghost" size="sm" onClick={() => setDelayFilters((f) => ({ ...f, dueFrom: undefined, dueTo: undefined }))}>
+              Clear range
+            </Button>
+          </div>
+
+          <TaskFilters role="ADMIN" filters={delayFilters} onChange={setDelayFilters} />
+
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              {delayLoading ? "Loading..." : `${delayData?.total ?? 0} tasks match this report`} — preview shows the first{" "}
+              {delayFilters.pageSize}
+            </p>
+            <Button asChild>
+              <a href={`/api/reports/task-delay/export?${buildTaskQuery({ ...delayFilters, sortBy: "dueDate", sortDir: "desc" })}`}>
+                <Download className="size-4" /> Export to Excel
+              </a>
+            </Button>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employee</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Task ID</TableHead>
+                  <TableHead>Task Name</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Assigned Date</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Completed Date</TableHead>
+                  <TableHead className="text-right">Delay (days)</TableHead>
+                  <TableHead>Remarks</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {delayLoading &&
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      {Array.from({ length: 11 }).map((__, j) => (
+                        <TableCell key={j}>
+                          <Skeleton className="h-5 w-full" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                {!delayLoading && delayData?.tasks.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={11} className="py-10 text-center text-sm text-muted-foreground">
+                      No tasks match this report.
+                    </TableCell>
+                  </TableRow>
+                )}
+                {delayData?.tasks.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell className="whitespace-nowrap">{t.assignedTo.name}</TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">{t.company.name}</TableCell>
+                    <TableCell className="whitespace-nowrap font-mono text-xs text-primary">{t.taskNumber}</TableCell>
+                    <TableCell className="max-w-56 truncate font-medium">{t.title}</TableCell>
+                    <TableCell>
+                      <PriorityBadge priority={t.priority} />
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={t.status} />
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(t.assignedDate)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(t.dueDate)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(t.completedDate)}</TableCell>
+                    <TableCell className="text-right">
+                      {t.delayDays > 0 ? <span className="font-medium text-red-600">{t.delayDays}</span> : "—"}
+                    </TableCell>
+                    <TableCell className="max-w-48 truncate text-muted-foreground">{t.remarks || "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

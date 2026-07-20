@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse } from "@/lib/session";
-import { bulkUpdateSchema } from "@/lib/validations/task";
+import { bulkUpdateSchema, bulkDeleteSchema } from "@/lib/validations/task";
+import { bulkSoftDeleteTasks } from "@/lib/services/task-service";
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -30,6 +31,22 @@ export async function PATCH(request: NextRequest) {
     });
 
     return NextResponse.json({ ok: true, updated: taskIds.length });
+  } catch (error) {
+    return apiErrorResponse(error);
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await requireSession(["ADMIN"]);
+    const body = await request.json().catch(() => null);
+    const parsed = bulkDeleteSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
+    }
+
+    const deleted = await bulkSoftDeleteTasks(parsed.data.taskIds, session);
+    return NextResponse.json({ ok: true, deleted });
   } catch (error) {
     return apiErrorResponse(error);
   }

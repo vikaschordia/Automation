@@ -269,3 +269,24 @@ export async function softDeleteTask(taskId: number, session: SessionPayload) {
     prisma.taskHistory.create({ data: { taskId, changedById: session.sub, action: "UPDATED", field: "deletedAt", newValue: "deleted" } }),
   ]);
 }
+
+/** Bulk counterpart of softDeleteTask, used by the spreadsheet's multi-select "Delete" action. */
+export async function bulkSoftDeleteTasks(taskIds: number[], session: SessionPayload): Promise<number> {
+  const existing = await prisma.task.findMany({ where: { id: { in: taskIds }, deletedAt: null }, select: { id: true } });
+  const existingIds = existing.map((t) => t.id);
+  if (existingIds.length === 0) return 0;
+
+  await prisma.$transaction([
+    prisma.task.updateMany({ where: { id: { in: existingIds } }, data: { deletedAt: new Date() } }),
+    prisma.taskHistory.createMany({
+      data: existingIds.map((taskId) => ({
+        taskId,
+        changedById: session.sub,
+        action: "UPDATED" as const,
+        field: "deletedAt",
+        newValue: "deleted",
+      })),
+    }),
+  ]);
+  return existingIds.length;
+}

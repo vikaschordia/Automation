@@ -39,3 +39,8 @@ export const bulkUpdateSchema = z.object({
   }),
 });
 export type BulkUpdateInput = z.infer<typeof bulkUpdateSchema>;
+
+export const bulkDeleteSchema = z.object({
+  taskIds: z.array(z.number().int()).min(1, "Select at least one task"),
+});
+export type BulkDeleteInput = z.infer<typeof bulkDeleteSchema>;

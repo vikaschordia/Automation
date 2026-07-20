@@ -136,6 +136,25 @@ export function useBulkUpdateTasks() {
   });
 }
 
+export function useBulkDeleteTasks() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (taskIds: number[]) =>
+      jsonOrThrow(
+        await fetch("/api/tasks/bulk", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ taskIds }),
+        }),
+      ),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success(`Deleted ${data.deleted} task(s)`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useTaskCategories() {
   return useQuery<{ id: string; name: string }[]>({
     queryKey: ["task-categories"],

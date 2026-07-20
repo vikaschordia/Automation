@@ -158,7 +158,13 @@ export function EmployeeFormDialog({
                   id="joiningDate"
                   type="date"
                   defaultValue={toDateInputValue(watch("joiningDate") as Date)}
-                  onChange={(e) => setValue("joiningDate", new Date(e.target.value))}
+                  onChange={(e) => {
+                    // While typing a date manually, the native input briefly reports "" between
+                    // keystrokes (e.g. year typed but not month/day yet) — only commit once it's
+                    // a complete, valid date, so an Invalid Date never lands in form state.
+                    if (!e.target.value) return;
+                    setValue("joiningDate", new Date(e.target.value));
+                  }}
                 />
               </div>
             </div>

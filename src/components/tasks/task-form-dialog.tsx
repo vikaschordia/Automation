@@ -281,7 +281,13 @@ export function TaskFormDialog({
                   id="assignedDate"
                   type="date"
                   defaultValue={toDateInputValue(watch("assignedDate") as Date)}
-                  onChange={(e) => setValue("assignedDate", new Date(e.target.value))}
+                  onChange={(e) => {
+                    // Native date inputs briefly report "" while being typed manually (as
+                    // opposed to picked from the calendar, which always lands on a complete
+                    // value) — skip those so an Invalid Date never reaches form state.
+                    if (!e.target.value) return;
+                    setValue("assignedDate", new Date(e.target.value));
+                  }}
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -290,7 +296,10 @@ export function TaskFormDialog({
                   id="dueDate"
                   type="date"
                   defaultValue={toDateInputValue(watch("dueDate") as Date)}
-                  onChange={(e) => setValue("dueDate", new Date(e.target.value))}
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    setValue("dueDate", new Date(e.target.value));
+                  }}
                 />
                 {errors.dueDate && <p className="text-xs text-destructive">Due date is required</p>}
               </div>

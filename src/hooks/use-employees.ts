@@ -28,7 +28,10 @@ async function jsonOrThrow(res: Response) {
   return data;
 }
 
-export function useEmployees(filters?: { companyId?: string; departmentId?: string; status?: string; search?: string }) {
+export function useEmployees(
+  filters?: { companyId?: string; departmentId?: string; status?: string; search?: string },
+  options?: { enabled?: boolean },
+) {
   const params = new URLSearchParams();
   if (filters?.companyId) params.set("companyId", filters.companyId);
   if (filters?.departmentId) params.set("departmentId", filters.departmentId);
@@ -42,6 +45,7 @@ export function useEmployees(filters?: { companyId?: string; departmentId?: stri
       const data = await jsonOrThrow(res);
       return data.employees;
     },
+    enabled: options?.enabled ?? true,
   });
 }
 

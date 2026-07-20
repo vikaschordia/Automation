@@ -3,6 +3,7 @@
 import { Search, X } from "lucide-react";
 import { useCompanies } from "@/hooks/use-companies";
 import { useDepartments } from "@/hooks/use-departments";
+import { useEmployees } from "@/hooks/use-employees";
 import { useTaskCategories } from "@/hooks/use-tasks";
 import { TASK_PRIORITIES, TASK_STATUSES, PRIORITY_META, STATUS_META, type Role } from "@/lib/constants";
 import type { TaskFilters as TaskFiltersState } from "@/hooks/use-tasks";
@@ -21,9 +22,21 @@ export function TaskFilters({
 }) {
   const { data: companies } = useCompanies({ enabled: role === "ADMIN" });
   const { data: departments } = useDepartments(filters.companyId, { enabled: role === "ADMIN" });
+  const { data: employees } = useEmployees(
+    { companyId: filters.companyId, departmentId: filters.departmentId },
+    { enabled: role === "ADMIN" },
+  );
   const { data: categories } = useTaskCategories();
 
-  const hasActiveFilters = !!(filters.search || filters.status || filters.priority || filters.companyId || filters.departmentId || filters.categoryId);
+  const hasActiveFilters = !!(
+    filters.search ||
+    filters.status ||
+    filters.priority ||
+    filters.companyId ||
+    filters.departmentId ||
+    filters.assignedToId ||
+    filters.categoryId
+  );
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -97,6 +110,23 @@ export function TaskFilters({
               {departments?.map((d) => (
                 <SelectItem key={d.id} value={d.id}>
                   {d.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.assignedToId ?? "all"}
+            onValueChange={(v) => onChange({ ...filters, assignedToId: v === "all" ? undefined : v, page: 1 })}
+          >
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="All employees" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All employees</SelectItem>
+              {employees?.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.name}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse, ApiError } from "@/lib/session";
@@ -71,21 +72,45 @@ export async function DELETE(_request: NextRequest, { params }: { params: Params
   try {
     await requireSession(["ADMIN"]);
     const { id } = await params;
-    const counts = await prisma.employee.findUnique({
+    const employee = await prisma.employee.findUnique({
       where: { id },
-      select: { _count: { select: { assignedTasks: true, reports: true } } },
+      select: {
+        // Soft-deleted tasks still exist as rows (deletedAt is just a flag) and still reference
+        // this employee via the required assignedToId FK, so an unfiltered count here would keep
+        // blocking deletion even after the user has "deleted" every one of their tasks in the UI.
+        _count: { select: { assignedTasks: { where: { deletedAt: null } }, reports: true } },
+      },
     });
-    if (!counts) throw new ApiError(404, "Employee not found");
-    if (counts._count.assignedTasks > 0) {
-      throw new ApiError(409, "This employee has tasks assigned to them. Set them to Inactive instead of deleting.");
+    if (!employee) throw new ApiError(404, "Employee not found");
+    if (employee._count.assignedTasks > 0) {
+      throw new ApiError(
+        409,
+        "This employee has active tasks assigned to them. Delete or reassign those tasks first, or set them to Inactive instead of deleting.",
+      );
     }
-    if (counts._count.reports > 0) {
+    if (employee._count.reports > 0) {
       throw new ApiError(409, "This employee manages other employees. Reassign those employees first.");
     }
-    await prisma.$transaction([
-      prisma.user.deleteMany({ where: { employeeId: id } }),
-      prisma.employee.delete({ where: { id } }),
-    ]);
+
+    try {
+      await prisma.$transaction([
+        // Their soft-deleted tasks are already invisible everywhere in the app (there's no
+        // restore UI yet) — purge them here so the leftover rows don't keep blocking the
+        // employee record. This cascades away each task's TaskHistory automatically.
+        prisma.task.deleteMany({ where: { assignedToId: id, deletedAt: { not: null } } }),
+        prisma.user.deleteMany({ where: { employeeId: id } }),
+        prisma.employee.delete({ where: { id } }),
+      ]);
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
+        throw new ApiError(
+          409,
+          "This employee still has task history that can't be removed automatically (e.g. from a task later reassigned to someone else). Set them to Inactive instead of deleting.",
+        );
+      }
+      throw err;
+    }
+
     return NextResponse.json({ ok: true });
   } catch (error) {
     return apiErrorResponse(error);

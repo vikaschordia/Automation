@@ -33,7 +33,10 @@ export async function GET(request: NextRequest) {
         department: { select: { id: true, name: true } },
         manager: { select: { id: true, name: true } },
         user: { select: { id: true, isActive: true, lastLoginAt: true } },
-        _count: { select: { assignedTasks: true } },
+        // Excludes soft-deleted tasks — otherwise this stays inflated forever, even after every
+        // one of an employee's tasks has been deleted, since deletion just flags deletedAt rather
+        // than removing the row.
+        _count: { select: { assignedTasks: { where: { deletedAt: null } } } },
       },
     });
     return NextResponse.json({ employees });

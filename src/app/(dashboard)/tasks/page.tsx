@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Plus, Download } from "lucide-react";
 import type { SortingState } from "@tanstack/react-table";
 import { useSession } from "@/components/layout/session-provider";
@@ -14,9 +15,33 @@ import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { BulkActionBar } from "@/components/tasks/bulk-action-bar";
 import { Button } from "@/components/ui/button";
 
-export default function TasksPage() {
+const URL_FILTER_KEYS = [
+  "status",
+  "priority",
+  "companyId",
+  "departmentId",
+  "categoryId",
+  "assignedToId",
+  "dueFrom",
+  "dueTo",
+  "bucket",
+] as const satisfies readonly (keyof TaskFiltersState)[];
+
+/** Lets links like the dashboard's stat cards (/tasks?status=PENDING, /tasks?bucket=overdue,...)
+ * land on the exact matching, already-filtered task list instead of an unfiltered one. */
+function initialFiltersFromUrl(searchParams: URLSearchParams): TaskFiltersState {
+  const filters: TaskFiltersState = { page: 1, pageSize: 25 };
+  for (const key of URL_FILTER_KEYS) {
+    const value = searchParams.get(key);
+    if (value) filters[key] = value;
+  }
+  return filters;
+}
+
+function TasksPageInner() {
   const { role } = useSession();
-  const [filters, setFilters] = useState<TaskFiltersState>({ page: 1, pageSize: 25 });
+  const searchParams = useSearchParams();
+  const [filters, setFilters] = useState<TaskFiltersState>(() => initialFiltersFromUrl(searchParams));
   const [sorting, setSorting] = useState<SortingState>([{ id: "dueDate", desc: false }]);
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
@@ -116,5 +141,13 @@ export default function TasksPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function TasksPage() {
+  return (
+    <Suspense>
+      <TasksPageInner />
+    </Suspense>
   );
 }

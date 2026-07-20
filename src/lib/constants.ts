@@ -22,6 +22,13 @@ export const TASK_STATUSES = [
 ] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
+/**
+ * Statuses that count as "still open" for dashboard stats (excludes COMPLETED/CANCELLED).
+ * Typed as plain string[] (not TaskStatus[]) because it's matched against Task.status, which
+ * Prisma/SQLite surfaces as a raw string, and against Prisma's `{ in: [...] }` filter shape.
+ */
+export const OPEN_TASK_STATUSES: string[] = ["PENDING", "IN_PROGRESS", "WAITING_APPROVAL", "DELAYED", "ON_HOLD"];
+
 export const TASK_HISTORY_ACTIONS = [
   "CREATED",
   "UPDATED",

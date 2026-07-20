@@ -1,17 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarClock, AlarmClockOff, CalendarPlus, Flame } from "lucide-react";
+import { ArrowRight, CalendarClock, AlarmClockOff, CalendarPlus, Flame } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PriorityBadge } from "@/components/tasks/priority-badge";
 import { formatDate } from "@/lib/format";
 import type { AlertTask } from "@/hooks/use-dashboard";
 
 const TABS = [
-  { key: "overdue", label: "Overdue", icon: AlarmClockOff },
-  { key: "dueToday", label: "Due Today", icon: CalendarClock },
-  { key: "dueTomorrow", label: "Due Tomorrow", icon: CalendarPlus },
-  { key: "highPriority", label: "High Priority", icon: Flame },
+  { key: "overdue", label: "Overdue", icon: AlarmClockOff, bucket: "overdue" },
+  { key: "dueToday", label: "Due Today", icon: CalendarClock, bucket: "dueToday" },
+  { key: "dueTomorrow", label: "Due Tomorrow", icon: CalendarPlus, bucket: "dueTomorrow" },
+  { key: "highPriority", label: "High Priority", icon: Flame, bucket: "highPriorityOpen" },
 ] as const;
 
 export function AlertsPanel({ alerts }: { alerts: Record<(typeof TABS)[number]["key"], AlertTask[]> }) {
@@ -46,6 +46,14 @@ export function AlertsPanel({ alerts }: { alerts: Record<(typeof TABS)[number]["
               <PriorityBadge priority={task.priority} className="shrink-0" />
             </Link>
           ))}
+          {alerts[t.key].length > 0 && (
+            <Link
+              href={`/tasks?bucket=${t.bucket}`}
+              className="mt-1 flex items-center justify-center gap-1 rounded-md py-2 text-xs font-medium text-primary hover:underline"
+            >
+              View all in Tasks <ArrowRight className="size-3" />
+            </Link>
+          )}
         </TabsContent>
       ))}
     </Tabs>

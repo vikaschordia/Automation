@@ -1,9 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { calculateDelayDays, isOverdue, isDueToday } from "@/lib/delay";
+import { calculateDelayDays, isOverdue, isDueToday, startOfDay } from "@/lib/delay";
 import { formatTaskNumber } from "@/lib/task-number";
 import { ApiError } from "@/lib/session";
-import { TASK_SORT_FIELDS, type TaskSortField } from "@/lib/constants";
+import { TASK_SORT_FIELDS, OPEN_TASK_STATUSES, type TaskSortField } from "@/lib/constants";
 import type { TaskCreateInput, TaskUpdateInput } from "@/lib/validations/task";
 import type { SessionPayload } from "@/lib/auth";
 
@@ -32,6 +32,35 @@ export function buildTaskOrderBy(sortByRaw: string, sortDir: "asc" | "desc"): Pr
 }
 
 /**
+ * A few dashboard stat cards (Overdue, Today's Due, High Priority) aren't a plain field-equality
+ * filter — they combine a date window with "still open" (excludes COMPLETED/CANCELLED), same as
+ * getAdminDashboardData's stats. This is what the "click a stat card, land on the exact matching
+ * task list" flow uses so the count on the card and the count on /tasks never disagree.
+ */
+function buildBucketWhere(bucket: string | null): Prisma.TaskWhereInput {
+  if (!bucket) return {};
+
+  const todayStart = startOfDay(new Date());
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  const dayAfterStart = new Date(todayStart);
+  dayAfterStart.setDate(dayAfterStart.getDate() + 2);
+
+  switch (bucket) {
+    case "overdue":
+      return { status: { in: OPEN_TASK_STATUSES }, completedDate: null, dueDate: { lt: todayStart } };
+    case "dueToday":
+      return { status: { in: OPEN_TASK_STATUSES }, dueDate: { gte: todayStart, lt: tomorrowStart } };
+    case "dueTomorrow":
+      return { status: { in: OPEN_TASK_STATUSES }, dueDate: { gte: tomorrowStart, lt: dayAfterStart } };
+    case "highPriorityOpen":
+      return { priority: "P1_URGENT", status: { in: OPEN_TASK_STATUSES } };
+    default:
+      return {};
+  }
+}
+
+/**
  * Shared by GET /api/tasks (paginated list) and GET /api/tasks/export (unpaginated Excel
  * download) so the two never drift out of sync on what "matches the current filters" means.
  */
@@ -56,6 +85,7 @@ export function buildTaskWhere(params: URLSearchParams, session: SessionPayload)
           },
         }
       : {}),
+    ...buildBucketWhere(params.get("bucket")),
     ...(search
       ? {
           OR: [

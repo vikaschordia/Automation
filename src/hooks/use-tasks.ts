@@ -42,6 +42,8 @@ export interface TaskFilters {
   assignedToId?: string;
   dueFrom?: string;
   dueTo?: string;
+  /** overdue | dueToday | dueTomorrow | highPriorityOpen — see buildTaskWhere in task-service.ts */
+  bucket?: string;
 }
 
 interface TaskListResponse {

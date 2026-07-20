@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { calculateDelayDays, isOverdue, isDueToday, isDueTomorrow } from "@/lib/delay";
 import { formatTaskNumber } from "@/lib/task-number";
-import { TASK_PRIORITIES, type TaskPriority } from "@/lib/constants";
+import { TASK_PRIORITIES, OPEN_TASK_STATUSES, type TaskPriority } from "@/lib/constants";
 
 const TREND_MONTHS = 6;
 
@@ -20,8 +20,6 @@ function monthBuckets(count: number): { key: string; label: string; start: Date;
   }
   return buckets;
 }
-
-const OPEN_STATUSES = ["PENDING", "IN_PROGRESS", "WAITING_APPROVAL", "DELAYED", "ON_HOLD"];
 
 export async function getAdminDashboardData() {
   const tasks = await prisma.task.findMany({
@@ -45,9 +43,9 @@ export async function getAdminDashboardData() {
   const pending = tasks.filter((t) => t.status === "PENDING").length;
   const completed = tasks.filter((t) => t.status === "COMPLETED").length;
   const delayedStatus = tasks.filter((t) => t.status === "DELAYED").length;
-  const overdue = tasks.filter((t) => OPEN_STATUSES.includes(t.status) && isOverdue(t.dueDate, t.completedDate)).length;
-  const dueToday = tasks.filter((t) => OPEN_STATUSES.includes(t.status) && isDueToday(t.dueDate)).length;
-  const highPriority = tasks.filter((t) => t.priority === "P1_URGENT" && OPEN_STATUSES.includes(t.status)).length;
+  const overdue = tasks.filter((t) => OPEN_TASK_STATUSES.includes(t.status) && isOverdue(t.dueDate, t.completedDate)).length;
+  const dueToday = tasks.filter((t) => OPEN_TASK_STATUSES.includes(t.status) && isDueToday(t.dueDate)).length;
+  const highPriority = tasks.filter((t) => t.priority === "P1_URGENT" && OPEN_TASK_STATUSES.includes(t.status)).length;
 
   const completedTasks = tasks.filter((t) => t.status === "COMPLETED" && t.completedDate);
   const avgCompletionDays =
@@ -102,7 +100,7 @@ export async function getAdminDashboardData() {
     assignedToName: t.assignedTo.name,
   });
 
-  const openTasks = tasks.filter((t) => OPEN_STATUSES.includes(t.status));
+  const openTasks = tasks.filter((t) => OPEN_TASK_STATUSES.includes(t.status));
   const alerts = {
     dueToday: openTasks.filter((t) => isDueToday(t.dueDate)).slice(0, 6).map(alertTask),
     overdue: openTasks
@@ -136,7 +134,7 @@ export async function getEmployeeDashboardData(employeeId: string) {
     orderBy: { dueDate: "asc" },
   });
 
-  const openTasks = tasks.filter((t) => OPEN_STATUSES.includes(t.status));
+  const openTasks = tasks.filter((t) => OPEN_TASK_STATUSES.includes(t.status));
   const total = tasks.length;
   const completed = tasks.filter((t) => t.status === "COMPLETED").length;
 

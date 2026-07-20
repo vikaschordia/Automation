@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, X } from "lucide-react";
+import { Search, X, Filter } from "lucide-react";
 import { useCompanies } from "@/hooks/use-companies";
 import { useDepartments } from "@/hooks/use-departments";
 import { useEmployees } from "@/hooks/use-employees";
@@ -10,6 +10,13 @@ import type { TaskFilters as TaskFiltersState } from "@/hooks/use-tasks";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const BUCKET_LABELS: Record<string, string> = {
+  overdue: "Overdue",
+  dueToday: "Due Today",
+  dueTomorrow: "Due Tomorrow",
+  highPriorityOpen: "High Priority (open)",
+};
 
 export function TaskFilters({
   role,
@@ -35,11 +42,27 @@ export function TaskFilters({
     filters.companyId ||
     filters.departmentId ||
     filters.assignedToId ||
-    filters.categoryId
+    filters.categoryId ||
+    filters.bucket
   );
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
+      {filters.bucket && (
+        <span className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+          <Filter className="size-3" />
+          {BUCKET_LABELS[filters.bucket] ?? filters.bucket}
+          <button
+            type="button"
+            aria-label="Remove filter"
+            className="rounded-full hover:bg-primary/20"
+            onClick={() => onChange({ ...filters, bucket: undefined, page: 1 })}
+          >
+            <X className="size-3" />
+          </button>
+        </span>
+      )}
+
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input

@@ -29,7 +29,7 @@ export function isDueTomorrow(dueDate: Date, today: Date = new Date()): boolean 
   return startOfDay(dueDate).getTime() === tomorrow.getTime();
 }
 
-function startOfDay(date: Date): Date {
+export function startOfDay(date: Date): Date {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   return d;

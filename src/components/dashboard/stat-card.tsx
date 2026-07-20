@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export function StatCard({
@@ -6,12 +7,15 @@ export function StatCard({
   icon: Icon,
   hint,
   tone = "default",
+  href,
 }: {
   label: string;
   value: string | number;
   icon: React.ComponentType<{ className?: string }>;
   hint?: string;
   tone?: "default" | "danger" | "warning" | "success";
+  /** When set, the whole card links to the filtered task list (e.g. /tasks?status=PENDING). */
+  href?: string;
 }) {
   const toneClasses: Record<string, string> = {
     default: "bg-primary/10 text-primary",
@@ -20,8 +24,8 @@ export function StatCard({
     success: "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400",
   };
 
-  return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card p-4">
+  const content = (
+    <>
       <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", toneClasses[tone])}>
         <Icon className="size-4.5" />
       </div>
@@ -30,6 +34,19 @@ export function StatCard({
         <p className="text-xl font-semibold tracking-tight">{value}</p>
         {hint && <p className="truncate text-[11px] text-muted-foreground">{hint}</p>}
       </div>
-    </div>
+    </>
   );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="flex items-center gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-accent/50"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className="flex items-center gap-3 rounded-lg border bg-card p-4">{content}</div>;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   ListChecks,
   Clock,
@@ -47,30 +48,50 @@ export default function AdminDashboardPage() {
       <PageHeader title="Dashboard" description="Overview of tasks across all companies." />
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        <StatCard label="Total Tasks" value={stats.total} icon={ListChecks} />
-        <StatCard label="Pending" value={stats.pending} icon={Clock} />
-        <StatCard label="Completed" value={stats.completed} icon={CheckCircle2} tone="success" />
-        <StatCard label="Delayed" value={stats.delayed} icon={AlarmClockOff} tone="danger" />
-        <StatCard label="Today's Due" value={stats.dueToday} icon={CalendarClock} tone="warning" />
-        <StatCard label="Overdue" value={stats.overdue} icon={AlarmClockOff} tone="danger" />
-        <StatCard label="High Priority" value={stats.highPriority} icon={Flame} tone="warning" />
+        <StatCard label="Total Tasks" value={stats.total} icon={ListChecks} href="/tasks" />
+        <StatCard label="Pending" value={stats.pending} icon={Clock} href="/tasks?status=PENDING" />
+        <StatCard
+          label="Completed"
+          value={stats.completed}
+          icon={CheckCircle2}
+          tone="success"
+          href="/tasks?status=COMPLETED"
+        />
+        <StatCard label="Delayed" value={stats.delayed} icon={AlarmClockOff} tone="danger" href="/tasks?status=DELAYED" />
+        <StatCard
+          label="Today's Due"
+          value={stats.dueToday}
+          icon={CalendarClock}
+          tone="warning"
+          href="/tasks?bucket=dueToday"
+        />
+        <StatCard label="Overdue" value={stats.overdue} icon={AlarmClockOff} tone="danger" href="/tasks?bucket=overdue" />
+        <StatCard
+          label="High Priority"
+          value={stats.highPriority}
+          icon={Flame}
+          tone="warning"
+          href="/tasks?bucket=highPriorityOpen"
+        />
         <StatCard label="Avg. Completion" value={`${stats.avgCompletionDays}d`} icon={Timer} />
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <TrendingUp className="size-4" /> Task Completion
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center gap-2 py-6">
-            <div className="text-4xl font-semibold tracking-tight">{stats.completionPercent}%</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.completed} of {stats.total} tasks completed
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/tasks?status=COMPLETED" className="lg:col-span-1">
+          <Card className="h-full transition-colors hover:border-primary/40 hover:bg-accent/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <TrendingUp className="size-4" /> Task Completion
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center gap-2 py-6">
+              <div className="text-4xl font-semibold tracking-tight">{stats.completionPercent}%</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.completed} of {stats.total} tasks completed
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
         <div className="lg:col-span-2">
           <Card className="h-full">
             <CardHeader className="pb-2">

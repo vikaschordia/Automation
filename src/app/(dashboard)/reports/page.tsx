@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { TaskFilters } from "@/components/tasks/task-filters";
 import { PriorityBadge } from "@/components/tasks/priority-badge";
 import { StatusBadge } from "@/components/tasks/status-badge";
-import { formatDate } from "@/lib/format";
+import { formatDate, toDateInputValue } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,13 +25,14 @@ const DATE_PRESETS = [
   { label: "This year", days: 365 },
 ] as const;
 
-function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-
 export default function ReportsPage() {
   const [filters, setFilters] = useState<TaskFiltersState>({ page: 1, pageSize: 10 });
-  const { data, isLoading } = useTasks(filters);
+  // Newest-due first by default. Without an explicit sort this fell back to the same
+  // ascending-due-date order the spreadsheet view uses, which is right for "what's due soon" but
+  // wrong for a report preview: it always surfaces the very oldest matching tasks on page 1 —
+  // e.g. selecting no filters at all looked like "only completed tasks exist" because ancient,
+  // long-since-completed tasks sort first.
+  const { data, isLoading } = useTasks({ ...filters, sortBy: "dueDate", sortDir: "desc" });
 
   const [perfCompany, setPerfCompany] = useState("all");
   const [perfDept, setPerfDept] = useState("all");
@@ -46,7 +47,7 @@ export default function ReportsPage() {
     const to = new Date();
     const from = new Date();
     from.setDate(from.getDate() - days);
-    setFilters((f) => ({ ...f, dueFrom: toISODate(from), dueTo: toISODate(to), page: 1 }));
+    setFilters((f) => ({ ...f, dueFrom: toDateInputValue(from), dueTo: toDateInputValue(to), page: 1 }));
   }
 
   return (
@@ -83,7 +84,7 @@ export default function ReportsPage() {
               {isLoading ? "Loading..." : `${data?.total ?? 0} tasks match this report`} — preview shows the first {filters.pageSize}
             </p>
             <Button asChild>
-              <a href={`/api/tasks/export?${buildTaskQuery(filters)}`}>
+              <a href={`/api/tasks/export?${buildTaskQuery({ ...filters, sortBy: "dueDate", sortDir: "desc" })}`}>
                 <Download className="size-4" /> Export to Excel
               </a>
             </Button>

@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { calculateDelayDays, isOverdue, isDueToday, startOfDay } from "@/lib/delay";
+import { calculateDelayDays, isOverdue, isDueToday, startOfDay, parseLocalDateString } from "@/lib/delay";
 import { formatTaskNumber } from "@/lib/task-number";
 import { ApiError } from "@/lib/session";
 import { TASK_SORT_FIELDS, OPEN_TASK_STATUSES, type TaskSortField } from "@/lib/constants";
@@ -31,6 +31,12 @@ export function buildTaskOrderBy(sortByRaw: string, sortDir: "asc" | "desc"): Pr
   }
 }
 
+function dayAfter(date: Date): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + 1);
+  return next;
+}
+
 /**
  * A few dashboard stat cards (Overdue, Today's Due, High Priority) aren't a plain field-equality
  * filter — they combine a date window with "still open" (excludes COMPLETED/CANCELLED), same as
@@ -41,10 +47,8 @@ function buildBucketWhere(bucket: string | null): Prisma.TaskWhereInput {
   if (!bucket) return {};
 
   const todayStart = startOfDay(new Date());
-  const tomorrowStart = new Date(todayStart);
-  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-  const dayAfterStart = new Date(todayStart);
-  dayAfterStart.setDate(dayAfterStart.getDate() + 2);
+  const tomorrowStart = dayAfter(todayStart);
+  const dayAfterTomorrowStart = dayAfter(tomorrowStart);
 
   switch (bucket) {
     case "overdue":
@@ -52,7 +56,7 @@ function buildBucketWhere(bucket: string | null): Prisma.TaskWhereInput {
     case "dueToday":
       return { status: { in: OPEN_TASK_STATUSES }, dueDate: { gte: todayStart, lt: tomorrowStart } };
     case "dueTomorrow":
-      return { status: { in: OPEN_TASK_STATUSES }, dueDate: { gte: tomorrowStart, lt: dayAfterStart } };
+      return { status: { in: OPEN_TASK_STATUSES }, dueDate: { gte: tomorrowStart, lt: dayAfterTomorrowStart } };
     case "highPriorityOpen":
       return { priority: "P1_URGENT", status: { in: OPEN_TASK_STATUSES } };
     default:
@@ -80,8 +84,11 @@ export function buildTaskWhere(params: URLSearchParams, session: SessionPayload)
     ...(params.get("dueFrom") || params.get("dueTo")
       ? {
           dueDate: {
-            ...(params.get("dueFrom") ? { gte: new Date(params.get("dueFrom")!) } : {}),
-            ...(params.get("dueTo") ? { lte: new Date(params.get("dueTo")!) } : {}),
+            // dueFrom/dueTo are "yyyy-mm-dd" (date-only, no time-of-day). dueTo needs the whole
+            // day included — e.g. dueFrom=dueTo=today must match a task due today at 2pm — so the
+            // upper bound is exclusive against the *next* day's local midnight, not <= today's.
+            ...(params.get("dueFrom") ? { gte: parseLocalDateString(params.get("dueFrom")!) } : {}),
+            ...(params.get("dueTo") ? { lt: dayAfter(parseLocalDateString(params.get("dueTo")!)) } : {}),
           },
         }
       : {}),

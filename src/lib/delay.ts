@@ -35,6 +35,18 @@ export function startOfDay(date: Date): Date {
   return d;
 }
 
+/**
+ * Parses a "yyyy-mm-dd" string (from a date filter/input) as LOCAL midnight, not UTC midnight.
+ * `new Date("yyyy-mm-dd")` parses as UTC per the ES spec — in any timezone ahead of UTC (e.g.
+ * IST, UTC+5:30) that silently shifts the date backward for part of the day, and doing date-range
+ * math against it produces off-by-one / empty-range bugs. Splitting into components and using the
+ * `Date(year, month, day)` constructor sidesteps the ambiguity entirely.
+ */
+export function parseLocalDateString(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 function diffInDays(a: Date, b: Date): number {
   const MS_PER_DAY = 1000 * 60 * 60 * 24;
   return Math.round((a.getTime() - b.getTime()) / MS_PER_DAY);

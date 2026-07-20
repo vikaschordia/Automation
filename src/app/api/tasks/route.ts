@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse } from "@/lib/session";
 import { taskCreateSchema } from "@/lib/validations/task";
-import { buildTaskWhere, createTask, serializeTask, taskInclude } from "@/lib/services/task-service";
-
-const SORTABLE_FIELDS = new Set(["title", "priority", "status", "assignedDate", "dueDate", "createdAt", "progressPercent"]);
+import { buildTaskOrderBy, buildTaskWhere, createTask, serializeTask, taskInclude } from "@/lib/services/task-service";
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,9 +11,8 @@ export async function GET(request: NextRequest) {
 
     const page = Math.max(1, Number(params.get("page")) || 1);
     const pageSize = Math.min(200, Math.max(1, Number(params.get("pageSize")) || 25));
-    const sortByRaw = params.get("sortBy") ?? "dueDate";
-    const sortBy = SORTABLE_FIELDS.has(sortByRaw) ? sortByRaw : "dueDate";
     const sortDir = params.get("sortDir") === "desc" ? "desc" : "asc";
+    const orderBy = buildTaskOrderBy(params.get("sortBy") ?? "dueDate", sortDir);
 
     const where = buildTaskWhere(params, session);
 
@@ -23,7 +20,7 @@ export async function GET(request: NextRequest) {
       prisma.task.findMany({
         where,
         include: taskInclude,
-        orderBy: { [sortBy]: sortDir },
+        orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),

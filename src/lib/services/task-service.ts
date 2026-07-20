@@ -3,8 +3,33 @@ import { prisma } from "@/lib/prisma";
 import { calculateDelayDays, isOverdue, isDueToday } from "@/lib/delay";
 import { formatTaskNumber } from "@/lib/task-number";
 import { ApiError } from "@/lib/session";
+import { TASK_SORT_FIELDS, type TaskSortField } from "@/lib/constants";
 import type { TaskCreateInput, TaskUpdateInput } from "@/lib/validations/task";
 import type { SessionPayload } from "@/lib/auth";
+
+/**
+ * Turns a spreadsheet column id (see TASK_SORT_FIELDS) into a Prisma `orderBy`. Some columns —
+ * Task ID, Employee, Company, Department — aren't plain scalar columns on Task, so `{ [sortBy]:
+ * sortDir }` silently fails/no-ops for them; this is what actually knows how to sort by each one.
+ */
+export function buildTaskOrderBy(sortByRaw: string, sortDir: "asc" | "desc"): Prisma.TaskOrderByWithRelationInput {
+  const sortBy: TaskSortField = (TASK_SORT_FIELDS as readonly string[]).includes(sortByRaw)
+    ? (sortByRaw as TaskSortField)
+    : "dueDate";
+
+  switch (sortBy) {
+    case "taskNumber":
+      return { id: sortDir };
+    case "employee":
+      return { assignedTo: { name: sortDir } };
+    case "company":
+      return { company: { name: sortDir } };
+    case "department":
+      return { department: { name: sortDir } };
+    default:
+      return { [sortBy]: sortDir };
+  }
+}
 
 /**
  * Shared by GET /api/tasks (paginated list) and GET /api/tasks/export (unpaginated Excel

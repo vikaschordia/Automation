@@ -17,9 +17,10 @@ import { formatDate } from "@/lib/format";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { Role } from "@/lib/constants";
+import { TASK_SORT_FIELDS, type Role } from "@/lib/constants";
 
 const columnHelper = createColumnHelper<TaskRow>();
+const SORTABLE_COLUMN_IDS: readonly string[] = TASK_SORT_FIELDS;
 
 export function TaskTable({
   tasks,
@@ -195,7 +196,7 @@ export function TaskTable({
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id} className="border-b">
               {headerGroup.headers.map((header, idx) => {
-                const sortable = header.column.getCanSort() !== false && !["select", "actions"].includes(header.column.id);
+                const sortable = SORTABLE_COLUMN_IDS.includes(header.column.id);
                 const sortEntry = sorting.find((s) => s.id === header.column.id);
                 return (
                   <th

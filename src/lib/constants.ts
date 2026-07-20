@@ -118,3 +118,24 @@ export const ADMIN_ONLY_TASK_FIELDS = [
 
 export const ACCESS_TOKEN_COOKIE = "task_tracker_at";
 export const REFRESH_TOKEN_COOKIE = "task_tracker_rt";
+
+/**
+ * Columns the spreadsheet task view allows sorting on. Shared between the client (which column
+ * headers render as clickable) and the server (which validates `sortBy` and knows how to turn
+ * it into a Prisma `orderBy`, including the relation lookups for employee/company/department) so
+ * the two can't drift out of sync.
+ */
+export const TASK_SORT_FIELDS = [
+  "taskNumber",
+  "employee",
+  "company",
+  "department",
+  "title",
+  "priority",
+  "status",
+  "assignedDate",
+  "dueDate",
+  "progressPercent",
+  "remarks",
+] as const;
+export type TaskSortField = (typeof TASK_SORT_FIELDS)[number];

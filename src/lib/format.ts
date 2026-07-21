@@ -36,6 +36,10 @@ export function toDateInputValue(date: Date | string | null | undefined): string
   return d ? format(d, "yyyy-MM-dd") : "";
 }
 
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
+}
+
 export function initials(name: string): string {
   return name
     .split(" ")

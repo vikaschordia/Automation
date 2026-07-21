@@ -5,7 +5,7 @@ import { ACCESS_TOKEN_COOKIE } from "@/lib/constants";
 
 // Next.js 16 renamed middleware.ts -> proxy.ts (function `proxy`). Runs in the Node.js
 // runtime, which is what we need anyway since it shares code with the route handlers.
-const ADMIN_ONLY_PREFIXES = ["/dashboard", "/companies", "/departments", "/employees", "/categories", "/reports"];
+const ADMIN_ONLY_PREFIXES = ["/dashboard", "/companies", "/departments", "/employees", "/categories", "/reports", "/expenses"];
 const PUBLIC_PATHS = ["/login"];
 
 export async function proxy(request: NextRequest) {

@@ -12,6 +12,7 @@ import {
   ClipboardCheck,
   ListTodo,
   Tag,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/constants";
@@ -30,6 +31,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/employees", label: "Employees", icon: Users },
   { href: "/categories", label: "Categories", icon: Tag },
   { href: "/reports", label: "Reports", icon: FileBarChart2 },
+  { href: "/expenses", label: "Monthly Expenses", icon: Wallet },
 ];
 
 export const EMPLOYEE_NAV: NavItem[] = [

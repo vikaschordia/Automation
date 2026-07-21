@@ -159,6 +159,29 @@ model Task {
   @@index([groupId])
 }
 
+// Fixed monthly expenses (rent, subscriptions, etc.) — entirely separate from task tracking,
+// keyed off dueDate rather than a foreign key back to Task/Employee/Company. A recurring
+// expense's future months aren't stored ahead of time; they're generated on demand (see
+// ensureRecurringExpenses in expense-service.ts) the first time that later month is viewed,
+// correlated to earlier months of the same series only by recurringGroupId (same non-FK
+// correlation-key pattern as Task.groupId above).
+model MonthlyExpense {
+  id               String    @id @default(cuid())
+  name             String
+  dueDate          DateTime
+  amount           Float
+  status           String    @default("UNPAID") // UNPAID | PAID
+  paidDate         DateTime?
+  isRecurring      Boolean   @default(false)
+  recurringGroupId String?
+  remarks          String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([dueDate])
+  @@index([recurringGroupId])
+}
+
 model TaskHistory {
   id        String   @id @default(cuid())
   taskId    Int

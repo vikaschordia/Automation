@@ -148,6 +148,21 @@ export const TASK_SORT_FIELDS = [
 ] as const;
 export type TaskSortField = (typeof TASK_SORT_FIELDS)[number];
 
+export const EXPENSE_STATUSES = ["UNPAID", "PAID"] as const;
+export type ExpenseStatus = (typeof EXPENSE_STATUSES)[number];
+
+export const EXPENSE_STATUS_META: Record<ExpenseStatus, { label: string; badgeClass: string }> = {
+  UNPAID: {
+    label: "Unpaid",
+    badgeClass: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
+  },
+  PAID: {
+    label: "Paid",
+    badgeClass:
+      "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-900",
+  },
+};
+
 /** Columns the Employee Performance report allows sorting on — see getEmployeePerformanceReport. */
 export const EMPLOYEE_PERFORMANCE_SORT_FIELDS = [
   "name",

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse, ApiError } from "@/lib/session";
 import { assertOwnsTask, assertTaskFieldsEditable } from "@/lib/rbac";
 import { taskUpdateSchema } from "@/lib/validations/task";
-import { serializeTask, taskInclude, updateTask, softDeleteTask } from "@/lib/services/task-service";
+import { serializeTask, taskInclude, updateTask, softDeleteTask, getGroupSummary } from "@/lib/services/task-service";
 
 type Params = Promise<{ id: string }>;
 
@@ -29,7 +29,17 @@ export async function GET(_request: NextRequest, { params }: { params: Params })
       include: { changedBy: { select: { id: true, email: true, role: true } } },
     });
 
-    return NextResponse.json({ task: serializeTask(task), history });
+    const siblings = task.groupId
+      ? await prisma.task.findMany({
+          where: { groupId: task.groupId, deletedAt: null, id: { not: taskId } },
+          include: taskInclude,
+          orderBy: { assignedTo: { name: "asc" } },
+        })
+      : [];
+    const linkedTasks = siblings.map(serializeTask);
+    const groupSummary = task.groupId ? getGroupSummary([task, ...siblings]) : null;
+
+    return NextResponse.json({ task: serializeTask(task), history, linkedTasks, groupSummary });
   } catch (error) {
     return apiErrorResponse(error);
   }
@@ -52,8 +62,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     assertOwnsTask(session.role, session.employeeId, existing.assignedToId);
     assertTaskFieldsEditable(session.role, Object.keys(parsed.data));
 
-    const task = await updateTask(taskId, parsed.data, session);
-    return NextResponse.json({ task });
+    const { task, linkedTasks } = await updateTask(taskId, parsed.data, session);
+    return NextResponse.json({ task, linkedTasks });
   } catch (error) {
     return apiErrorResponse(error);
   }

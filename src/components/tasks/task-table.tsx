@@ -9,13 +9,14 @@ import {
   createColumnHelper,
   type SortingState,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2, Loader2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2, Loader2, Users } from "lucide-react";
 import type { TaskRow } from "@/hooks/use-tasks";
 import { PriorityBadge } from "@/components/tasks/priority-badge";
 import { EditableStatusCell, EditableProgressCell, EditableRemarksCell } from "@/components/tasks/editable-cells";
 import { formatDate } from "@/lib/format";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { TASK_SORT_FIELDS, type Role } from "@/lib/constants";
 
@@ -99,9 +100,19 @@ export function TaskTable({
         header: "Task",
         size: 260,
         cell: (info) => (
-          <Link href={`/tasks/${info.row.original.id}`} className="line-clamp-1 hover:underline">
-            {info.getValue()}
-          </Link>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Link href={`/tasks/${info.row.original.id}`} className="line-clamp-1 min-w-0 hover:underline">
+              {info.getValue()}
+            </Link>
+            {info.row.original.groupId && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Users className="size-3.5 shrink-0 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>Also assigned to other employees — see Linked Assignments on the task page</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
         ),
       }),
       columnHelper.accessor("priority", {

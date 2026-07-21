@@ -21,11 +21,34 @@ export interface TaskRow {
   delayDays: number;
   isOverdue: boolean;
   isDueToday: boolean;
+  /** Shared by every linked copy when this task was assigned to multiple employees at once. */
+  groupId: string | null;
   assignedTo: { id: string; name: string; employeeCode: string; designation: string };
   assignedBy: { id: string; email: string };
   department: { id: string; name: string };
   company: { id: string; name: string };
   category: { id: string; name: string } | null;
+}
+
+export interface GroupSummary {
+  total: number;
+  completedCount: number;
+  label: "Completed" | "Partially Completed" | "Pending";
+}
+
+export interface TaskDetailResponse {
+  task: TaskRow;
+  history: {
+    id: string;
+    action: string;
+    field: string | null;
+    oldValue: string | null;
+    newValue: string | null;
+    createdAt: string;
+    changedBy: { id: string; email: string; role: string };
+  }[];
+  linkedTasks: TaskRow[];
+  groupSummary: GroupSummary | null;
 }
 
 export interface TaskFilters {
@@ -77,7 +100,7 @@ export function useTasks(filters: TaskFilters) {
 }
 
 export function useTask(id: number | null) {
-  return useQuery({
+  return useQuery<TaskDetailResponse>({
     queryKey: ["task", id],
     queryFn: async () => jsonOrThrow(await fetch(`/api/tasks/${id}`)),
     enabled: id != null,
@@ -89,9 +112,9 @@ export function useCreateTask() {
   return useMutation({
     mutationFn: async (input: TaskCreateInput) =>
       jsonOrThrow(await fetch("/api/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) })),
-    onSuccess: () => {
+    onSuccess: (data: { task: TaskRow; linkedTasks: TaskRow[] }) => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
-      toast.success("Task created");
+      toast.success(data.linkedTasks.length > 0 ? `Task created for ${data.linkedTasks.length + 1} employees` : "Task created");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -102,10 +125,12 @@ export function useUpdateTask(options?: { silent?: boolean }) {
   return useMutation({
     mutationFn: async ({ id, input }: { id: number; input: Partial<TaskUpdateInput> }) =>
       jsonOrThrow(await fetch(`/api/tasks/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) })),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data: { task: TaskRow; linkedTasks: TaskRow[] }, variables) => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["task", variables.id] });
-      if (!options?.silent) toast.success("Task updated");
+      if (!options?.silent) {
+        toast.success(data.linkedTasks?.length > 0 ? `Task updated, linked ${data.linkedTasks.length} more employee(s)` : "Task updated");
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });

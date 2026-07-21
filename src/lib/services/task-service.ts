@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { calculateDelayDays, isOverdue, isDueToday, startOfDay, parseLocalDateString } from "@/lib/delay";
@@ -135,8 +136,88 @@ function safeParseTags(raw: string): string[] {
   }
 }
 
+/**
+ * "Partially Completed" is never written to any Task row's status — it's this computed,
+ * display-only label for a group of linked tasks (see groupId on the Task model). Individual
+ * rows always keep showing their own real status everywhere else (spreadsheet, dashboards,
+ * reports); this is only used for the task detail page's "Linked Assignments" summary.
+ */
+export function getGroupSummary(tasks: { status: string }[]): {
+  total: number;
+  completedCount: number;
+  label: "Completed" | "Partially Completed" | "Pending";
+} {
+  const total = tasks.length;
+  const completedCount = tasks.filter((t) => t.status === "COMPLETED").length;
+  const label = completedCount === 0 ? "Pending" : completedCount === total ? "Completed" : "Partially Completed";
+  return { total, completedCount, label };
+}
+
+interface SharedTaskFields {
+  title: string;
+  description: string | null;
+  priority: string;
+  dueDate: Date;
+  assignedDate: Date;
+  departmentId: string;
+  companyId: string;
+  categoryId: string | null;
+  estimatedHours: number | null;
+  remarks: string | null;
+  tags: string;
+}
+
+/**
+ * Assigning a task to multiple employees creates one independent Task row per employee — same
+ * shared fields, each with their own id/status/progress starting fresh at PENDING/0 — correlated
+ * only by `groupId`. This is what every "also assign to" flow (create and update) calls once it
+ * has the shared fields and the list of employees who don't already have a copy in the group.
+ */
+async function createLinkedSiblings(
+  tx: Prisma.TransactionClient,
+  shared: SharedTaskFields,
+  employeeIds: string[],
+  groupId: string,
+  session: SessionPayload,
+) {
+  const created: TaskWithRelations[] = [];
+  for (const employeeId of employeeIds) {
+    const task = await tx.task.create({
+      data: {
+        title: shared.title,
+        description: shared.description,
+        assignedToId: employeeId,
+        assignedById: session.sub,
+        departmentId: shared.departmentId,
+        companyId: shared.companyId,
+        categoryId: shared.categoryId,
+        priority: shared.priority,
+        status: "PENDING",
+        assignedDate: shared.assignedDate,
+        dueDate: shared.dueDate,
+        progressPercent: 0,
+        estimatedHours: shared.estimatedHours,
+        remarks: shared.remarks,
+        tags: shared.tags,
+        groupId,
+      },
+      include: taskInclude,
+    });
+    await tx.taskHistory.create({
+      data: { taskId: task.id, changedById: session.sub, action: "CREATED", newValue: task.status },
+    });
+    created.push(task);
+  }
+  return created;
+}
+
 export async function createTask(input: TaskCreateInput, session: SessionPayload) {
-  const task = await prisma.$transaction(async (tx) => {
+  const additionalIds = Array.from(
+    new Set((input.additionalAssignedToIds ?? []).filter((id) => id && id !== input.assignedToId)),
+  );
+  const groupId = additionalIds.length > 0 ? randomUUID() : null;
+
+  const { task, linkedTasks } = await prisma.$transaction(async (tx) => {
     const created = await tx.task.create({
       data: {
         title: input.title,
@@ -154,15 +235,23 @@ export async function createTask(input: TaskCreateInput, session: SessionPayload
         estimatedHours: input.estimatedHours ?? null,
         remarks: input.remarks || null,
         tags: JSON.stringify(input.tags ?? []),
+        groupId,
       },
       include: taskInclude,
     });
     await tx.taskHistory.create({
       data: { taskId: created.id, changedById: session.sub, action: "CREATED", newValue: created.status },
     });
-    return created;
+
+    const linked =
+      additionalIds.length > 0
+        ? await createLinkedSiblings(tx, created, additionalIds, groupId!, session)
+        : [];
+
+    return { task: created, linkedTasks: linked };
   });
-  return serializeTask(task);
+
+  return { task: serializeTask(task), linkedTasks: linkedTasks.map(serializeTask) };
 }
 
 /**
@@ -245,20 +334,56 @@ export async function updateTask(taskId: number, patch: TaskUpdateInput, session
     }
   }
 
-  if (Object.keys(data).length === 0) {
+  // Adding assignees to this task's group (may be its first — group is created on demand).
+  const additionalIds = Array.from(
+    new Set((patch.additionalAssignedToIds ?? []).filter((id) => id && id !== existing.assignedToId)),
+  );
+  const isFirstLink = additionalIds.length > 0 && !existing.groupId;
+  const groupId = existing.groupId ?? (isFirstLink ? randomUUID() : null);
+  if (isFirstLink) data.groupId = groupId;
+
+  if (Object.keys(data).length === 0 && additionalIds.length === 0) {
     const unchanged = await prisma.task.findUniqueOrThrow({ where: { id: taskId }, include: taskInclude });
-    return serializeTask(unchanged);
+    return { task: serializeTask(unchanged), linkedTasks: [] };
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
-    const result = await tx.task.update({ where: { id: taskId }, data, include: taskInclude });
+  const { task: updated, linkedTasks } = await prisma.$transaction(async (tx) => {
+    const result =
+      Object.keys(data).length > 0
+        ? await tx.task.update({ where: { id: taskId }, data, include: taskInclude })
+        : await tx.task.findUniqueOrThrow({ where: { id: taskId }, include: taskInclude });
     if (historyEntries.length > 0) {
       await tx.taskHistory.createMany({ data: historyEntries });
     }
-    return result;
+
+    let linked: TaskWithRelations[] = [];
+    if (additionalIds.length > 0 && groupId) {
+      // Exclude anyone already linked in this group (re-adding an existing sibling would
+      // otherwise create a duplicate copy for them).
+      const alreadyLinked = await tx.task.findMany({
+        where: { groupId, deletedAt: null },
+        select: { assignedToId: true },
+      });
+      const alreadyLinkedIds = new Set(alreadyLinked.map((t) => t.assignedToId));
+      const toCreate = additionalIds.filter((id) => !alreadyLinkedIds.has(id));
+      if (toCreate.length > 0) {
+        linked = await createLinkedSiblings(tx, result, toCreate, groupId, session);
+        await tx.taskHistory.create({
+          data: {
+            taskId,
+            changedById: session.sub,
+            action: "UPDATED",
+            field: "additionalAssignedToIds",
+            newValue: `+${toCreate.length} employee(s)`,
+          },
+        });
+      }
+    }
+
+    return { task: result, linkedTasks: linked };
   });
 
-  return serializeTask(updated);
+  return { task: serializeTask(updated), linkedTasks: linkedTasks.map(serializeTask) };
 }
 
 export async function softDeleteTask(taskId: number, session: SessionPayload) {

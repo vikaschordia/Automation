@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
@@ -72,6 +73,7 @@ export function TaskFormDialog({
       estimatedHours: undefined,
       actualHours: undefined,
       remarks: "",
+      additionalAssignedToIds: [],
     },
   });
 
@@ -97,6 +99,7 @@ export function TaskFormDialog({
         estimatedHours: task.estimatedHours ?? undefined,
         actualHours: task.actualHours ?? undefined,
         remarks: task.remarks ?? "",
+        additionalAssignedToIds: [],
       });
       setTagsText(task.tags.join(", "));
     } else {
@@ -115,6 +118,7 @@ export function TaskFormDialog({
         estimatedHours: undefined,
         actualHours: undefined,
         remarks: "",
+        additionalAssignedToIds: [],
       });
       setTagsText("");
     }
@@ -208,7 +212,14 @@ export function TaskFormDialog({
               <Label>Assign to</Label>
               <Select
                 value={watch("assignedToId")}
-                onValueChange={(v) => setValue("assignedToId", v, { shouldValidate: true })}
+                onValueChange={(v) => {
+                  setValue("assignedToId", v, { shouldValidate: true });
+                  // Keep the primary assignee out of the "also assign to" list if it was checked.
+                  setValue(
+                    "additionalAssignedToIds",
+                    (watch("additionalAssignedToIds") ?? []).filter((id) => id !== v),
+                  );
+                }}
                 disabled={!companyId}
               >
                 <SelectTrigger className="w-full">
@@ -223,6 +234,44 @@ export function TaskFormDialog({
                 </SelectContent>
               </Select>
               {errors.assignedToId && <p className="text-xs text-destructive">{errors.assignedToId.message}</p>}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label>Also assign to (optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                {isEdit
+                  ? "Creates an independent, linked copy of this task for each employee checked below. Anyone already linked to this task is skipped automatically."
+                  : "Creates an independent, linked copy of this task for each employee checked below — each tracks their own status/progress separately."}
+              </p>
+              <div className="flex max-h-40 flex-col gap-1.5 overflow-y-auto rounded-md border p-2.5">
+                {!companyId && <p className="py-1 text-center text-xs text-muted-foreground">Select a company first.</p>}
+                {companyId && activeEmployees.filter((e) => e.id !== watch("assignedToId")).length === 0 && (
+                  <p className="py-1 text-center text-xs text-muted-foreground">No other employees in this company.</p>
+                )}
+                {activeEmployees
+                  .filter((e) => e.id !== watch("assignedToId"))
+                  .map((e) => {
+                    const selected = watch("additionalAssignedToIds") ?? [];
+                    const checked = selected.includes(e.id);
+                    return (
+                      <div key={e.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`additional-employee-${e.id}`}
+                          checked={checked}
+                          onCheckedChange={(v) =>
+                            setValue(
+                              "additionalAssignedToIds",
+                              v ? [...selected, e.id] : selected.filter((id) => id !== e.id),
+                            )
+                          }
+                        />
+                        <Label htmlFor={`additional-employee-${e.id}`} className="cursor-pointer text-sm font-normal">
+                          {e.name} · {e.designation}
+                        </Label>
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

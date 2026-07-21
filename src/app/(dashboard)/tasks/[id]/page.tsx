@@ -1,8 +1,9 @@
 "use client";
 
 import { use, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Pencil, Trash2, Loader2, Building2, Network, User, Tag, Clock } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Loader2, Building2, Network, User, Tag, Clock, Users } from "lucide-react";
 import { useSession } from "@/components/layout/session-provider";
 import { useTask, useUpdateTask, useDeleteTask, type TaskRow } from "@/hooks/use-tasks";
 import { PriorityBadge } from "@/components/tasks/priority-badge";
@@ -13,6 +14,7 @@ import { CompleteTaskDialog } from "@/components/tasks/complete-task-dialog";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatDate, toDateInputValue } from "@/lib/format";
 import { TASK_STATUSES, STATUS_META } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,6 +50,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
   const task: TaskRow = data.task;
   const history = data.history;
+  const linkedTasks = data.linkedTasks;
+  const groupSummary = data.groupSummary;
   const progressValue = progress ?? task.progressPercent;
   const remarksValue = remarks ?? task.remarks ?? "";
 
@@ -111,6 +115,56 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
               )}
             </CardContent>
           </Card>
+
+          {linkedTasks.length > 0 && groupSummary && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Users className="size-4" /> Linked Assignments
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <p className="text-sm text-muted-foreground">
+                  This task was assigned to {linkedTasks.length + 1} employees. Each tracks their own progress
+                  independently —{" "}
+                  <span
+                    className={cn(
+                      "font-medium",
+                      groupSummary.label === "Completed" && "text-emerald-600 dark:text-emerald-400",
+                      groupSummary.label === "Partially Completed" && "text-amber-600 dark:text-amber-400",
+                      groupSummary.label === "Pending" && "text-muted-foreground",
+                    )}
+                  >
+                    {groupSummary.completedCount} of {groupSummary.total} completed ({groupSummary.label})
+                  </span>
+                  .
+                </p>
+                <div className="flex flex-col gap-1">
+                  <Link
+                    href={`/tasks/${task.id}`}
+                    className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm"
+                  >
+                    <span className="font-medium">
+                      {task.assignedTo.name} <span className="text-xs text-muted-foreground">(this task, {task.taskNumber})</span>
+                    </span>
+                    <StatusBadge status={task.status} />
+                  </Link>
+                  {linkedTasks.map((sibling) => (
+                    <Link
+                      key={sibling.id}
+                      href={`/tasks/${sibling.id}`}
+                      className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-accent"
+                    >
+                      <span className="font-medium">
+                        {sibling.assignedTo.name} <span className="text-xs text-muted-foreground">({sibling.taskNumber})</span>
+                      </span>
+                      <StatusBadge status={sibling.status} />
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>

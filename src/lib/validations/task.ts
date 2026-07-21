@@ -20,12 +20,19 @@ export const taskBaseSchema = z.object({
   tags: z.array(z.string().trim().min(1)).max(10).optional(),
 });
 
+// Instruction, not a real Task column — "also create a linked copy of this task for each of
+// these employees" (see task-service.ts). Same pattern as employeeSchema's createLogin/password.
+const additionalAssignedToIdsField = {
+  additionalAssignedToIds: z.array(z.string()).max(50).optional(),
+};
+
 export const taskCreateSchema = taskBaseSchema.omit({ status: true, progressPercent: true }).extend({
   status: z.enum(TASK_STATUSES).optional(),
   progressPercent: z.coerce.number().int().min(0).max(100).optional(),
+  ...additionalAssignedToIdsField,
 });
 
-export const taskUpdateSchema = taskBaseSchema.partial();
+export const taskUpdateSchema = taskBaseSchema.partial().extend(additionalAssignedToIdsField);
 
 export type TaskCreateInput = z.infer<typeof taskCreateSchema>;
 export type TaskUpdateInput = z.infer<typeof taskUpdateSchema>;

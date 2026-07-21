@@ -130,6 +130,12 @@ model Task {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  // Shared by every linked copy created when a task is assigned to multiple employees at once —
+  // each employee gets their own independent Task row (own id/status/progress/etc.), correlated
+  // only by this key. Null for an ordinary single-employee task (the vast majority). Never used
+  // as a real relation/FK — it's purely a lookup key for "find this task's sibling assignments".
+  groupId String?
+
   assignedToId String
   assignedTo   Employee @relation("AssignedTo", fields: [assignedToId], references: [id])
   assignedById String
@@ -150,6 +156,7 @@ model Task {
   @@index([priority])
   @@index([status])
   @@index([deletedAt])
+  @@index([groupId])
 }
 
 model TaskHistory {

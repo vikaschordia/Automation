@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
     const rows = await getEmployeePerformanceReport({
       companyId: params.get("companyId") ?? undefined,
       departmentId: params.get("departmentId") ?? undefined,
+      sortBy: params.get("sortBy") ?? undefined,
+      sortDir: params.get("sortDir") === "desc" ? "desc" : "asc",
     });
 
     const workbook = new ExcelJS.Workbook();

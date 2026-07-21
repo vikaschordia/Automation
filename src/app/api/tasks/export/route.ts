@@ -2,15 +2,18 @@ import ExcelJS from "exceljs";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse } from "@/lib/session";
-import { buildTaskWhere, taskInclude } from "@/lib/services/task-service";
+import { buildTaskOrderBy, buildTaskWhere, taskInclude } from "@/lib/services/task-service";
 import { addTaskListSheet, excelResponseHeaders, toResponseBody, workbookToBuffer } from "@/lib/excel/task-list-sheet";
 
 export async function GET(request: NextRequest) {
   try {
     const session = await requireSession();
-    const where = buildTaskWhere(request.nextUrl.searchParams, session);
+    const params = request.nextUrl.searchParams;
+    const where = buildTaskWhere(params, session);
+    const sortDir = params.get("sortDir") === "asc" ? "asc" : "desc";
+    const orderBy = buildTaskOrderBy(params.get("sortBy") ?? "dueDate", sortDir);
 
-    const tasks = await prisma.task.findMany({ where, include: taskInclude, orderBy: { dueDate: "asc" } });
+    const tasks = await prisma.task.findMany({ where, include: taskInclude, orderBy });
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "Daily Task Tracker";

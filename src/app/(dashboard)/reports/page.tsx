@@ -10,13 +10,16 @@ import { PageHeader } from "@/components/shared/page-header";
 import { TaskFilters } from "@/components/tasks/task-filters";
 import { PriorityBadge } from "@/components/tasks/priority-badge";
 import { StatusBadge } from "@/components/tasks/status-badge";
+import { SortableTableHead, toggleSort, type SimpleSort } from "@/components/shared/sortable-table-head";
 import { formatDate, toDateInputValue } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const DELAY_SORT_DISABLED_REASON = "Delay is calculated, not stored — sorting by it isn't available yet";
 
 const DATE_PRESETS = [
   { label: "Today", days: 0 },
@@ -32,10 +35,12 @@ export default function ReportsPage() {
   // wrong for a report preview: it always surfaces the very oldest matching tasks on page 1 —
   // e.g. selecting no filters at all looked like "only completed tasks exist" because ancient,
   // long-since-completed tasks sort first.
-  const { data, isLoading } = useTasks({ ...filters, sortBy: "dueDate", sortDir: "desc" });
+  const [taskSort, setTaskSort] = useState<SimpleSort>({ by: "dueDate", dir: "desc" });
+  const { data, isLoading } = useTasks({ ...filters, sortBy: taskSort.by, sortDir: taskSort.dir });
 
   const [delayFilters, setDelayFilters] = useState<TaskFiltersState>({ page: 1, pageSize: 10 });
-  const { data: delayData, isLoading: delayLoading } = useTasks({ ...delayFilters, sortBy: "dueDate", sortDir: "desc" });
+  const [delaySort, setDelaySort] = useState<SimpleSort>({ by: "dueDate", dir: "desc" });
+  const { data: delayData, isLoading: delayLoading } = useTasks({ ...delayFilters, sortBy: delaySort.by, sortDir: delaySort.dir });
 
   function applyDelayPreset(days: number) {
     const to = new Date();
@@ -46,11 +51,14 @@ export default function ReportsPage() {
 
   const [perfCompany, setPerfCompany] = useState("all");
   const [perfDept, setPerfDept] = useState("all");
+  const [perfSort, setPerfSort] = useState<SimpleSort>({ by: "name", dir: "asc" });
   const { data: companies } = useCompanies();
   const { data: departments } = useDepartments(perfCompany === "all" ? undefined : perfCompany);
   const { data: performanceRows, isLoading: perfLoading } = useEmployeePerformanceReport({
     companyId: perfCompany === "all" ? undefined : perfCompany,
     departmentId: perfDept === "all" ? undefined : perfDept,
+    sortBy: perfSort.by,
+    sortDir: perfSort.dir,
   });
 
   function applyPreset(days: number) {
@@ -97,7 +105,7 @@ export default function ReportsPage() {
               {isLoading ? "Loading..." : `${data?.total ?? 0} tasks match this report`} — preview shows the first {filters.pageSize}
             </p>
             <Button asChild>
-              <a href={`/api/tasks/export?${buildTaskQuery({ ...filters, sortBy: "dueDate", sortDir: "desc" })}`}>
+              <a href={`/api/tasks/export?${buildTaskQuery({ ...filters, sortBy: taskSort.by, sortDir: taskSort.dir })}`}>
                 <Download className="size-4" /> Export to Excel
               </a>
             </Button>
@@ -107,21 +115,47 @@ export default function ReportsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Task</TableHead>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Company / Dept</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Completed Date</TableHead>
-                  <TableHead className="text-right">Delay</TableHead>
+                  <SortableTableHead sortKey="title" current={taskSort} onSort={(k) => setTaskSort((s) => toggleSort(s, k))}>
+                    Task
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="employee" current={taskSort} onSort={(k) => setTaskSort((s) => toggleSort(s, k))}>
+                    Employee
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="company" current={taskSort} onSort={(k) => setTaskSort((s) => toggleSort(s, k))}>
+                    Company
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="department" current={taskSort} onSort={(k) => setTaskSort((s) => toggleSort(s, k))}>
+                    Department
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="priority" current={taskSort} onSort={(k) => setTaskSort((s) => toggleSort(s, k))}>
+                    Priority
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="status" current={taskSort} onSort={(k) => setTaskSort((s) => toggleSort(s, k))}>
+                    Status
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="dueDate" current={taskSort} onSort={(k) => setTaskSort((s) => toggleSort(s, k))}>
+                    Due Date
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="completedDate" current={taskSort} onSort={(k) => setTaskSort((s) => toggleSort(s, k))}>
+                    Completed Date
+                  </SortableTableHead>
+                  <SortableTableHead
+                    sortKey="delay"
+                    current={taskSort}
+                    onSort={() => {}}
+                    className="text-right"
+                    align="right"
+                    disabledReason={DELAY_SORT_DISABLED_REASON}
+                  >
+                    Delay
+                  </SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading &&
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 8 }).map((__, j) => (
+                      {Array.from({ length: 9 }).map((__, j) => (
                         <TableCell key={j}>
                           <Skeleton className="h-5 w-full" />
                         </TableCell>
@@ -130,7 +164,7 @@ export default function ReportsPage() {
                   ))}
                 {!isLoading && data?.tasks.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
                       No tasks match this report.
                     </TableCell>
                   </TableRow>
@@ -139,9 +173,8 @@ export default function ReportsPage() {
                   <TableRow key={t.id}>
                     <TableCell className="max-w-64 truncate font-medium">{t.title}</TableCell>
                     <TableCell>{t.assignedTo.name}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {t.company.name} / {t.department.name}
-                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{t.company.name}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{t.department.name}</TableCell>
                     <TableCell>
                       <PriorityBadge priority={t.priority} />
                     </TableCell>
@@ -179,7 +212,7 @@ export default function ReportsPage() {
               {delayFilters.pageSize}
             </p>
             <Button asChild>
-              <a href={`/api/reports/task-delay/export?${buildTaskQuery({ ...delayFilters, sortBy: "dueDate", sortDir: "desc" })}`}>
+              <a href={`/api/reports/task-delay/export?${buildTaskQuery({ ...delayFilters, sortBy: delaySort.by, sortDir: delaySort.dir })}`}>
                 <Download className="size-4" /> Export to Excel
               </a>
             </Button>
@@ -189,17 +222,46 @@ export default function ReportsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Task ID</TableHead>
-                  <TableHead>Task Name</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Assigned Date</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Completed Date</TableHead>
-                  <TableHead className="text-right">Delay (days)</TableHead>
-                  <TableHead>Remarks</TableHead>
+                  <SortableTableHead sortKey="employee" current={delaySort} onSort={(k) => setDelaySort((s) => toggleSort(s, k))}>
+                    Employee
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="company" current={delaySort} onSort={(k) => setDelaySort((s) => toggleSort(s, k))}>
+                    Company
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="taskNumber" current={delaySort} onSort={(k) => setDelaySort((s) => toggleSort(s, k))}>
+                    Task ID
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="title" current={delaySort} onSort={(k) => setDelaySort((s) => toggleSort(s, k))}>
+                    Task Name
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="priority" current={delaySort} onSort={(k) => setDelaySort((s) => toggleSort(s, k))}>
+                    Priority
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="status" current={delaySort} onSort={(k) => setDelaySort((s) => toggleSort(s, k))}>
+                    Status
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="assignedDate" current={delaySort} onSort={(k) => setDelaySort((s) => toggleSort(s, k))}>
+                    Assigned Date
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="dueDate" current={delaySort} onSort={(k) => setDelaySort((s) => toggleSort(s, k))}>
+                    Due Date
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="completedDate" current={delaySort} onSort={(k) => setDelaySort((s) => toggleSort(s, k))}>
+                    Completed Date
+                  </SortableTableHead>
+                  <SortableTableHead
+                    sortKey="delay"
+                    current={delaySort}
+                    onSort={() => {}}
+                    className="text-right"
+                    align="right"
+                    disabledReason={DELAY_SORT_DISABLED_REASON}
+                  >
+                    Delay (days)
+                  </SortableTableHead>
+                  <SortableTableHead sortKey="remarks" current={delaySort} onSort={(k) => setDelaySort((s) => toggleSort(s, k))}>
+                    Remarks
+                  </SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -282,6 +344,8 @@ export default function ReportsPage() {
                 href={`/api/reports/employee-performance/export?${new URLSearchParams({
                   ...(perfCompany !== "all" ? { companyId: perfCompany } : {}),
                   ...(perfDept !== "all" ? { departmentId: perfDept } : {}),
+                  sortBy: perfSort.by,
+                  sortDir: perfSort.dir,
                 }).toString()}`}
               >
                 <Download className="size-4" /> Export to Excel
@@ -294,14 +358,72 @@ export default function ReportsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Employee</TableHead>
-                    <TableHead className="text-center">Total</TableHead>
-                    <TableHead className="text-center">Completed</TableHead>
-                    <TableHead className="text-center">Pending</TableHead>
-                    <TableHead className="text-center">Delayed</TableHead>
-                    <TableHead className="text-center">Avg Delay</TableHead>
-                    <TableHead className="text-center">Avg Completion</TableHead>
-                    <TableHead className="text-center">Completion %</TableHead>
+                    <SortableTableHead sortKey="name" current={perfSort} onSort={(k) => setPerfSort((s) => toggleSort(s, k))}>
+                      Employee
+                    </SortableTableHead>
+                    <SortableTableHead
+                      sortKey="total"
+                      current={perfSort}
+                      onSort={(k) => setPerfSort((s) => toggleSort(s, k))}
+                      className="text-center"
+                      align="center"
+                    >
+                      Total
+                    </SortableTableHead>
+                    <SortableTableHead
+                      sortKey="completed"
+                      current={perfSort}
+                      onSort={(k) => setPerfSort((s) => toggleSort(s, k))}
+                      className="text-center"
+                      align="center"
+                    >
+                      Completed
+                    </SortableTableHead>
+                    <SortableTableHead
+                      sortKey="pending"
+                      current={perfSort}
+                      onSort={(k) => setPerfSort((s) => toggleSort(s, k))}
+                      className="text-center"
+                      align="center"
+                    >
+                      Pending
+                    </SortableTableHead>
+                    <SortableTableHead
+                      sortKey="delayed"
+                      current={perfSort}
+                      onSort={(k) => setPerfSort((s) => toggleSort(s, k))}
+                      className="text-center"
+                      align="center"
+                    >
+                      Delayed
+                    </SortableTableHead>
+                    <SortableTableHead
+                      sortKey="avgDelayDays"
+                      current={perfSort}
+                      onSort={(k) => setPerfSort((s) => toggleSort(s, k))}
+                      className="text-center"
+                      align="center"
+                    >
+                      Avg Delay
+                    </SortableTableHead>
+                    <SortableTableHead
+                      sortKey="avgCompletionDays"
+                      current={perfSort}
+                      onSort={(k) => setPerfSort((s) => toggleSort(s, k))}
+                      className="text-center"
+                      align="center"
+                    >
+                      Avg Completion
+                    </SortableTableHead>
+                    <SortableTableHead
+                      sortKey="completionPercent"
+                      current={perfSort}
+                      onSort={(k) => setPerfSort((s) => toggleSort(s, k))}
+                      className="text-center"
+                      align="center"
+                    >
+                      Completion %
+                    </SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

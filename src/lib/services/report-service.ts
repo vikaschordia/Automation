@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { calculateDelayDays, isOverdue } from "@/lib/delay";
-import { TASK_PRIORITIES } from "@/lib/constants";
+import { TASK_PRIORITIES, EMPLOYEE_PERFORMANCE_SORT_FIELDS, type EmployeePerformanceSortField } from "@/lib/constants";
 
 export interface EmployeePerformanceRow {
   employeeId: string;
@@ -21,7 +21,12 @@ export interface EmployeePerformanceRow {
   p3Count: number;
 }
 
-export async function getEmployeePerformanceReport(filters?: { companyId?: string; departmentId?: string }): Promise<EmployeePerformanceRow[]> {
+export async function getEmployeePerformanceReport(filters?: {
+  companyId?: string;
+  departmentId?: string;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+}): Promise<EmployeePerformanceRow[]> {
   const employees = await prisma.employee.findMany({
     where: {
       status: "ACTIVE",
@@ -40,7 +45,7 @@ export async function getEmployeePerformanceReport(filters?: { companyId?: strin
     orderBy: { name: "asc" },
   });
 
-  return employees.map((employee) => {
+  const rows = employees.map((employee) => {
     const tasks = employee.assignedTasks;
     const total = tasks.length;
     const completed = tasks.filter((t) => t.status === "COMPLETED").length;
@@ -81,6 +86,30 @@ export async function getEmployeePerformanceReport(filters?: { companyId?: strin
       p3Count: tasks.filter((t) => t.priority === TASK_PRIORITIES[2]).length,
     };
   });
+
+  return sortPerformanceRows(rows, filters?.sortBy, filters?.sortDir ?? "asc");
+}
+
+/**
+ * The dataset here is one row per active employee — always small, even at hundreds of employees —
+ * so sorting the already-computed array in JS is simpler and just as correct as pushing this
+ * through Prisma, and it's the only option for the aggregate columns (avgDelayDays, completionPercent,
+ * etc.) that don't exist as raw DB columns to order by.
+ */
+function sortPerformanceRows(rows: EmployeePerformanceRow[], sortByRaw: string | undefined, sortDir: "asc" | "desc") {
+  const sortBy: EmployeePerformanceSortField = (EMPLOYEE_PERFORMANCE_SORT_FIELDS as readonly string[]).includes(
+    sortByRaw ?? "",
+  )
+    ? (sortByRaw as EmployeePerformanceSortField)
+    : "name";
+
+  const sorted = [...rows].sort((a, b) => {
+    const av = a[sortBy];
+    const bv = b[sortBy];
+    const cmp = typeof av === "string" ? av.localeCompare(bv as string) : (av as number) - (bv as number);
+    return sortDir === "desc" ? -cmp : cmp;
+  });
+  return sorted;
 }
 
 function round1(n: number): number {

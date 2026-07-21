@@ -19,10 +19,17 @@ export interface EmployeePerformanceRow {
   p3Count: number;
 }
 
-export function useEmployeePerformanceReport(filters: { companyId?: string; departmentId?: string }) {
+export function useEmployeePerformanceReport(filters: {
+  companyId?: string;
+  departmentId?: string;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+}) {
   const params = new URLSearchParams();
   if (filters.companyId) params.set("companyId", filters.companyId);
   if (filters.departmentId) params.set("departmentId", filters.departmentId);
+  if (filters.sortBy) params.set("sortBy", filters.sortBy);
+  if (filters.sortDir) params.set("sortDir", filters.sortDir);
 
   return useQuery<EmployeePerformanceRow[]>({
     queryKey: ["reports", "employee-performance", filters],

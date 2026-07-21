@@ -147,3 +147,16 @@ export const TASK_SORT_FIELDS = [
   "remarks",
 ] as const;
 export type TaskSortField = (typeof TASK_SORT_FIELDS)[number];
+
+/** Columns the Employee Performance report allows sorting on — see getEmployeePerformanceReport. */
+export const EMPLOYEE_PERFORMANCE_SORT_FIELDS = [
+  "name",
+  "total",
+  "completed",
+  "pending",
+  "delayed",
+  "avgDelayDays",
+  "avgCompletionDays",
+  "completionPercent",
+] as const;
+export type EmployeePerformanceSortField = (typeof EMPLOYEE_PERFORMANCE_SORT_FIELDS)[number];

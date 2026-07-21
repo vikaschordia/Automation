@@ -142,6 +142,7 @@ export const TASK_SORT_FIELDS = [
   "status",
   "assignedDate",
   "dueDate",
+  "completedDate",
   "progressPercent",
   "remarks",
 ] as const;

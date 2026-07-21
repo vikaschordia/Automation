@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { useUpdateTask } from "@/hooks/use-tasks";
+import { CompleteTaskDialog } from "@/components/tasks/complete-task-dialog";
 import { TASK_STATUSES, STATUS_META, type TaskStatus } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
@@ -11,29 +12,52 @@ import { cn } from "@/lib/utils";
 
 export function EditableStatusCell({ taskId, status }: { taskId: number; status: TaskStatus }) {
   const mutation = useUpdateTask({ silent: true });
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  function handleChange(v: TaskStatus) {
+    // Marking Completed without asking is what causes delay to get computed from "whenever this
+    // dropdown happened to get clicked" instead of the real completion date — ask instead of
+    // silently defaulting server-side.
+    if (v === "COMPLETED" && status !== "COMPLETED") {
+      setConfirmOpen(true);
+      return;
+    }
+    mutation.mutate({ id: taskId, input: { status: v } });
+  }
+
   return (
-    <Select
-      value={status}
-      onValueChange={(v) => mutation.mutate({ id: taskId, input: { status: v as TaskStatus } })}
-    >
-      <SelectTrigger
-        size="sm"
-        className={cn("h-7 w-full border-transparent bg-transparent px-2 shadow-none hover:border-input", mutation.isPending && "opacity-60")}
-      >
-        <SelectValue>
-          <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", STATUS_META[status].badgeClass)}>
-            {STATUS_META[status].label}
-          </span>
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        {TASK_STATUSES.map((s) => (
-          <SelectItem key={s} value={s}>
-            {STATUS_META[s].label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <>
+      <Select value={status} onValueChange={handleChange}>
+        <SelectTrigger
+          size="sm"
+          className={cn("h-7 w-full border-transparent bg-transparent px-2 shadow-none hover:border-input", mutation.isPending && "opacity-60")}
+        >
+          <SelectValue>
+            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", STATUS_META[status].badgeClass)}>
+              {STATUS_META[status].label}
+            </span>
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {TASK_STATUSES.map((s) => (
+            <SelectItem key={s} value={s}>
+              {STATUS_META[s].label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <CompleteTaskDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        loading={mutation.isPending}
+        onConfirm={(completedDate) =>
+          mutation.mutate(
+            { id: taskId, input: { status: "COMPLETED", completedDate } },
+            { onSuccess: () => setConfirmOpen(false) },
+          )
+        }
+      />
+    </>
   );
 }
 

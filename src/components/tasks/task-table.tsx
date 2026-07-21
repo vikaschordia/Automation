@@ -124,6 +124,11 @@ export function TaskTable({
         size: 120,
         cell: (info) => formatDate(info.getValue()),
       }),
+      columnHelper.accessor("completedDate", {
+        header: "Completed Date",
+        size: 130,
+        cell: (info) => formatDate(info.getValue()),
+      }),
       columnHelper.accessor("delayDays", {
         header: "Delay",
         size: 90,

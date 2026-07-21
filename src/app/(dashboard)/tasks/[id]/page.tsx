@@ -9,6 +9,7 @@ import { PriorityBadge } from "@/components/tasks/priority-badge";
 import { StatusBadge } from "@/components/tasks/status-badge";
 import { TaskTimeline } from "@/components/tasks/task-timeline";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
+import { CompleteTaskDialog } from "@/components/tasks/complete-task-dialog";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatDate, toDateInputValue } from "@/lib/format";
 import { TASK_STATUSES, STATUS_META } from "@/lib/constants";
@@ -32,6 +33,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [completeOpen, setCompleteOpen] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [remarks, setRemarks] = useState<string | null>(null);
 
@@ -119,7 +121,15 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                 <Label>Status</Label>
                 <Select
                   value={task.status}
-                  onValueChange={(v) => updateMutation.mutate({ id: task.id, input: { status: v as TaskRow["status"] } })}
+                  onValueChange={(v) => {
+                    // Same reasoning as the spreadsheet's inline status cell: don't let
+                    // completedDate silently default to "right now" — ask for the real date.
+                    if (v === "COMPLETED" && task.status !== "COMPLETED") {
+                      setCompleteOpen(true);
+                      return;
+                    }
+                    updateMutation.mutate({ id: task.id, input: { status: v as TaskRow["status"] } });
+                  }}
                 >
                   <SelectTrigger className="w-full sm:w-64">
                     <SelectValue />
@@ -176,6 +186,10 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                 <Label htmlFor="completedDate">Completion date</Label>
                 <Input
                   id="completedDate"
+                  // Forces the uncontrolled input to remount (re-reading defaultValue) whenever
+                  // the server value changes — otherwise confirming the Mark Completed dialog
+                  // above would update the real completedDate but leave this field showing stale.
+                  key={task.completedDate ?? "none"}
                   type="date"
                   defaultValue={toDateInputValue(task.completedDate)}
                   onChange={(e) =>
@@ -205,6 +219,18 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           </CardContent>
         </Card>
       </div>
+
+      <CompleteTaskDialog
+        open={completeOpen}
+        onOpenChange={setCompleteOpen}
+        loading={updateMutation.isPending}
+        onConfirm={(completedDate) =>
+          updateMutation.mutate(
+            { id: task.id, input: { status: "COMPLETED", completedDate } },
+            { onSuccess: () => setCompleteOpen(false) },
+          )
+        }
+      />
 
       {role === "ADMIN" && (
         <>

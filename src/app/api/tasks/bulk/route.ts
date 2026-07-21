@@ -17,15 +17,25 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
     }
 
+    // Mirrors the single-task update path in task-service.ts: completing a task always stamps
+    // progress to 100%, and falls back to "now" if the caller didn't supply a real completion
+    // date (the UI always does via CompleteTaskDialog — this is just a safety net for direct
+    // API callers).
+    const data: typeof patch & { progressPercent?: number } = { ...patch };
+    if (data.status === "COMPLETED") {
+      data.progressPercent = 100;
+      data.completedDate = data.completedDate ?? new Date();
+    }
+
     await prisma.$transaction(async (tx) => {
-      await tx.task.updateMany({ where: { id: { in: taskIds }, deletedAt: null }, data: patch });
+      await tx.task.updateMany({ where: { id: { in: taskIds }, deletedAt: null }, data });
       await tx.taskHistory.createMany({
         data: taskIds.map((taskId) => ({
           taskId,
           changedById: session.sub,
           action: "UPDATED" as const,
           field: "bulk",
-          newValue: JSON.stringify(patch),
+          newValue: JSON.stringify(data),
         })),
       });
     });

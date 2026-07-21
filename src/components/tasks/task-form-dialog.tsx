@@ -68,7 +68,9 @@ export function TaskFormDialog({
       status: "PENDING",
       assignedDate: new Date(),
       dueDate: new Date(),
+      completedDate: null,
       estimatedHours: undefined,
+      actualHours: undefined,
       remarks: "",
     },
   });
@@ -91,7 +93,9 @@ export function TaskFormDialog({
         status: task.status,
         assignedDate: new Date(task.assignedDate),
         dueDate: new Date(task.dueDate),
+        completedDate: task.completedDate ? new Date(task.completedDate) : null,
         estimatedHours: task.estimatedHours ?? undefined,
+        actualHours: task.actualHours ?? undefined,
         remarks: task.remarks ?? "",
       });
       setTagsText(task.tags.join(", "));
@@ -107,7 +111,9 @@ export function TaskFormDialog({
         status: "PENDING",
         assignedDate: new Date(),
         dueDate: new Date(),
+        completedDate: null,
         estimatedHours: undefined,
+        actualHours: undefined,
         remarks: "",
       });
       setTagsText("");
@@ -259,7 +265,19 @@ export function TaskFormDialog({
             {isEdit && (
               <div className="flex flex-col gap-1.5">
                 <Label>Status</Label>
-                <Select value={watch("status")} onValueChange={(v) => setValue("status", v as TaskCreateInput["status"])}>
+                <Select
+                  value={watch("status")}
+                  onValueChange={(v) => {
+                    setValue("status", v as TaskCreateInput["status"]);
+                    // Marking a task Completed without a completion date is exactly what causes
+                    // delay to silently get computed from "whenever someone happened to click
+                    // this dropdown" instead of when the work actually finished — default it to
+                    // today so it's visible and correct unless the admin overrides it below.
+                    if (v === "COMPLETED" && !watch("completedDate")) {
+                      setValue("completedDate", new Date());
+                    }
+                  }}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
@@ -304,8 +322,25 @@ export function TaskFormDialog({
                 {errors.dueDate && <p className="text-xs text-destructive">Due date is required</p>}
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="estimatedHours">Est. hours</Label>
+                <Label htmlFor="completedDate">Completed date</Label>
+                <Input
+                  id="completedDate"
+                  type="date"
+                  defaultValue={toDateInputValue(watch("completedDate") as Date | null)}
+                  onChange={(e) => setValue("completedDate", e.target.value ? new Date(e.target.value) : null)}
+                />
+                <p className="text-[11px] text-muted-foreground">Delay is calculated from this date, not today&apos;s date.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="estimatedHours">Est. hours (optional)</Label>
                 <Input id="estimatedHours" type="number" min={0} step="0.5" {...register("estimatedHours")} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="actualHours">Actual hours (optional)</Label>
+                <Input id="actualHours" type="number" min={0} step="0.5" {...register("actualHours")} />
               </div>
             </div>
 

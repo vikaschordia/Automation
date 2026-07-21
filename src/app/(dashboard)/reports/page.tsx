@@ -113,6 +113,7 @@ export default function ReportsPage() {
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Due Date</TableHead>
+                  <TableHead>Completed Date</TableHead>
                   <TableHead className="text-right">Delay</TableHead>
                 </TableRow>
               </TableHeader>
@@ -120,7 +121,7 @@ export default function ReportsPage() {
                 {isLoading &&
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 7 }).map((__, j) => (
+                      {Array.from({ length: 8 }).map((__, j) => (
                         <TableCell key={j}>
                           <Skeleton className="h-5 w-full" />
                         </TableCell>
@@ -129,7 +130,7 @@ export default function ReportsPage() {
                   ))}
                 {!isLoading && data?.tasks.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                       No tasks match this report.
                     </TableCell>
                   </TableRow>
@@ -148,6 +149,7 @@ export default function ReportsPage() {
                       <StatusBadge status={t.status} />
                     </TableCell>
                     <TableCell>{formatDate(t.dueDate)}</TableCell>
+                    <TableCell>{formatDate(t.completedDate)}</TableCell>
                     <TableCell className="text-right">{t.delayDays > 0 ? <span className="font-medium text-red-600">{t.delayDays}d</span> : "—"}</TableCell>
                   </TableRow>
                 ))}

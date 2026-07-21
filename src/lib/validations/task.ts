@@ -36,6 +36,9 @@ export const bulkUpdateSchema = z.object({
     status: z.enum(TASK_STATUSES).optional(),
     priority: z.enum(TASK_PRIORITIES).optional(),
     assignedToId: z.string().optional(),
+    // Only meaningful alongside status: "COMPLETED" — lets a bulk "mark these Completed" apply
+    // one real completion date to every selected task instead of each defaulting to "now".
+    completedDate: z.coerce.date().optional(),
   }),
 });
 export type BulkUpdateInput = z.infer<typeof bulkUpdateSchema>;

@@ -17,7 +17,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           (await prisma.employee.findUnique({ where: { id: session.employeeId }, select: { canViewExpenses: true } }))?.canViewExpenses);
 
   return (
-    <SessionProvider session={{ name: session.name, email: session.email, role: session.role, employeeId: session.employeeId }}>
+    <SessionProvider
+      session={{ name: session.name, email: session.email, role: session.role, employeeId: session.employeeId, canViewExpenses }}
+    >
       <div className="flex h-svh w-full overflow-hidden">
         <Sidebar role={session.role} canViewExpenses={canViewExpenses} />
         <div className="flex min-w-0 flex-1 flex-col">

@@ -8,6 +8,7 @@ export interface ClientSession {
   email: string;
   role: Role;
   employeeId: string | null;
+  canViewExpenses: boolean;
 }
 
 const SessionContext = createContext<ClientSession | null>(null);

@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, apiErrorResponse } from "@/lib/session";
+import { assertExpenseAccess } from "@/lib/rbac";
 import { expenseUpdateSchema } from "@/lib/validations/expense";
 import { updateExpense, deleteExpense } from "@/lib/services/expense-service";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireSession(["ADMIN"]);
+    const session = await requireSession();
+    await assertExpenseAccess(session);
     const { id } = await params;
     const body = await request.json().catch(() => null);
     const parsed = expenseUpdateSchema.safeParse(body);
@@ -21,7 +23,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireSession(["ADMIN"]);
+    const session = await requireSession();
+    await assertExpenseAccess(session);
     const { id } = await params;
     await deleteExpense(id);
     return NextResponse.json({ success: true });

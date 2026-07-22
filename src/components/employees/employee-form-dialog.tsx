@@ -317,8 +317,8 @@ export function EmployeeFormDialog({
                 onCheckedChange={(v) => setValue("canViewExpenses", v === true)}
               />
               <Label htmlFor="canViewExpenses" className="cursor-pointer text-sm font-normal">
-                Can view Monthly Expenses tab
-                <span className="ml-1 text-xs text-muted-foreground">(read-only — view and export, not edit)</span>
+                Can access Monthly Expenses tab
+                <span className="ml-1 text-xs text-muted-foreground">(full access — add, edit, mark paid, delete)</span>
               </Label>
             </div>
 

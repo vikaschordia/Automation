@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, apiErrorResponse } from "@/lib/session";
-import { assertExpenseViewAccess } from "@/lib/rbac";
+import { assertExpenseAccess } from "@/lib/rbac";
 import { listExpenses } from "@/lib/services/expense-service";
 import { addExpenseSheet } from "@/lib/excel/expense-sheet";
 import { excelResponseHeaders, toResponseBody, workbookToBuffer } from "@/lib/excel/task-list-sheet";
@@ -14,7 +14,7 @@ const MONTH_NAMES = [
 export async function GET(request: NextRequest) {
   try {
     const session = await requireSession();
-    await assertExpenseViewAccess(session);
+    await assertExpenseAccess(session);
     const now = new Date();
     const year = Number(request.nextUrl.searchParams.get("year")) || now.getFullYear();
     const month = Number(request.nextUrl.searchParams.get("month")) || now.getMonth() + 1;

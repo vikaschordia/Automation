@@ -38,10 +38,10 @@ export const adminOnlyTaskFields = ADMIN_ONLY_TASK_FIELDS;
 
 /**
  * Monthly Expenses is admin-only by default, but an employee can be individually opted in
- * (Employee.canViewExpenses, toggled from the employee form) for read-only access — viewing and
- * exporting, never creating/editing/deleting/marking paid, which stay admin-only regardless.
+ * (Employee.canViewExpenses, toggled from the employee form) for full access — view, export,
+ * add, edit, mark paid/unpaid, and delete — same as an admin, just scoped to this one feature.
  */
-export async function assertExpenseViewAccess(session: SessionPayload): Promise<void> {
+export async function assertExpenseAccess(session: SessionPayload): Promise<void> {
   if (session.role === "ADMIN") return;
   const employee = session.employeeId
     ? await prisma.employee.findUnique({ where: { id: session.employeeId }, select: { canViewExpenses: true } })

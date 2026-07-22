@@ -27,8 +27,8 @@ function shiftMonth(year: number, month: number, delta: number): { year: number;
 }
 
 export default function ExpensesPage() {
-  const { role } = useSession();
-  const canManage = role === "ADMIN";
+  const { role, canViewExpenses } = useSession();
+  const canManage = role === "ADMIN" || canViewExpenses;
   const columnCount = canManage ? 8 : 7;
 
   const now = new Date();
@@ -51,11 +51,7 @@ export default function ExpensesPage() {
     <div>
       <PageHeader
         title="Monthly Expenses"
-        description={
-          canManage
-            ? "Track fixed monthly expenses — rent, subscriptions, and other recurring bills."
-            : "View-only access to fixed monthly expenses."
-        }
+        description="Track fixed monthly expenses — rent, subscriptions, and other recurring bills."
         actions={
           canManage ? (
             <Button

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, apiErrorResponse } from "@/lib/session";
-import { assertExpenseViewAccess } from "@/lib/rbac";
+import { assertExpenseAccess } from "@/lib/rbac";
 import { expenseCreateSchema } from "@/lib/validations/expense";
 import { listExpenses, createExpense } from "@/lib/services/expense-service";
 
@@ -14,7 +14,7 @@ function parseYearMonth(params: URLSearchParams): { year: number; month: number 
 export async function GET(request: NextRequest) {
   try {
     const session = await requireSession();
-    await assertExpenseViewAccess(session);
+    await assertExpenseAccess(session);
     const { year, month } = parseYearMonth(request.nextUrl.searchParams);
     const expenses = await listExpenses(year, month);
     return NextResponse.json({ expenses, year, month });
@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireSession(["ADMIN"]);
+    const session = await requireSession();
+    await assertExpenseAccess(session);
     const body = await request.json().catch(() => null);
     const parsed = expenseCreateSchema.safeParse(body);
     if (!parsed.success) {

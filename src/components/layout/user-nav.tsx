@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { LogOut, User as UserIcon } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -15,9 +16,15 @@ import { initials } from "@/lib/format";
 
 export function UserNav({ name, email, role }: { name: string; email: string; role: string }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
+    // The QueryClient is a single instance shared across the whole app (mounted once in the root
+    // layout, above both /login and the dashboard), so it survives this soft navigation. Without
+    // clearing it, cached per-user data — personal Notes being the most visible case — can still
+    // show up for a few seconds after a *different* person logs in in the same browser tab.
+    queryClient.clear();
     router.push("/login");
     router.refresh();
   }

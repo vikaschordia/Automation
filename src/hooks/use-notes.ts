@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "@/components/layout/session-provider";
 import type { NoteUpdateInput } from "@/lib/validations/note";
 
 export interface NoteRow {
@@ -17,8 +18,12 @@ async function jsonOrThrow(res: Response) {
 }
 
 export function useNotes() {
+  const { email } = useSession();
+  // Scoping the cache key to the logged-in user's email is a belt-and-suspenders measure on top
+  // of clearing the query cache on logout (user-nav.tsx): even if the same browser tab somehow
+  // still held another account's cached query data, this key could never resolve to it.
   return useQuery<{ notes: NoteRow[] }>({
-    queryKey: ["notes"],
+    queryKey: ["notes", email],
     queryFn: async () => jsonOrThrow(await fetch("/api/notes")),
   });
 }

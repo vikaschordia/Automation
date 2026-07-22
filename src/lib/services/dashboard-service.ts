@@ -26,6 +26,7 @@ export async function getAdminDashboardData() {
     where: { deletedAt: null },
     select: {
       id: true,
+      taskNumber: true,
       status: true,
       priority: true,
       dueDate: true,
@@ -93,7 +94,7 @@ export async function getAdminDashboardData() {
 
   const alertTask = (t: (typeof tasks)[number]) => ({
     id: t.id,
-    taskNumber: formatTaskNumber(t.id),
+    taskNumber: formatTaskNumber(t.taskNumber),
     title: t.title,
     priority: t.priority,
     dueDate: t.dueDate,
@@ -140,7 +141,7 @@ export async function getEmployeeDashboardData(employeeId: string) {
 
   const toRow = (t: (typeof tasks)[number]) => ({
     id: t.id,
-    taskNumber: formatTaskNumber(t.id),
+    taskNumber: formatTaskNumber(t.taskNumber),
     title: t.title,
     priority: t.priority,
     status: t.status,

@@ -1,24 +1,27 @@
-// Daily Task Tracker — Prisma schema (SQLite, local-only deployment)
+// Daily Task Tracker — Prisma schema (MongoDB Atlas)
 //
-// Enums are represented as plain String columns (not Prisma `enum` blocks) because the
-// SQLite connector does not support native enum types. The allowed values for each are
-// defined once in src/lib/constants.ts (TS union types + Zod enums) and validated at the
-// API boundary — Prisma/SQLite itself does not enforce them.
+// Enums are represented as plain String fields (not Prisma `enum` blocks) because the app
+// originally targeted SQLite, which has no native enum type; keeping String here too means no
+// data-shape change was needed when switching to MongoDB. The allowed values for each are defined
+// once in src/lib/constants.ts (TS union types + Zod enums) and validated at the API boundary.
 //
-// Task.id is a plain autoincrement integer so the human-readable Task Number can be derived
-// as `TSK-` + id.toString().padStart(6, "0") at display time, with no extra counter table.
+// MongoDB's Prisma connector has no autoincrement Int ids — every model's `id` is a
+// `String @id @default(auto()) @map("_id") @db.ObjectId`. Task used to derive its human-readable
+// Task Number directly from an autoincrement id (`TSK-` + id.toString().padStart(6, "0")); since
+// an ObjectId can't be formatted that way, Task now has a separate `taskNumber` Int, assigned
+// sequentially via the Counter model (see nextTaskNumber in src/lib/services/task-service.ts).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id           String    @id @default(cuid())
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
   email        String    @unique
   passwordHash String
   role         String // ADMIN | EMPLOYEE
@@ -27,8 +30,8 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  employeeId String?   @unique
-  employee   Employee? @relation("UserEmployee", fields: [employeeId], references: [id])
+  employeeId String?   @unique @db.ObjectId
+  employee   Employee? @relation("UserEmployee", fields: [employeeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   assignedTasks Task[]        @relation("AssignedBy")
   taskHistory   TaskHistory[]
@@ -41,9 +44,9 @@ model User {
 // never shared or admin-visible, regardless of role. Deliberately has no relation to Task/Employee;
 // it's a personal to-do list, not part of task tracking.
 model Note {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   content   String
   done      Boolean  @default(false)
   order     Int      @default(0)
@@ -54,7 +57,7 @@ model Note {
 }
 
 model Company {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   code      String   @unique
   address   String?
@@ -65,14 +68,15 @@ model Company {
   departments Department[]
   employees   Employee[] @relation("EmployeePrimaryCompany")
   // Employees mapped here in addition to their primary company (see Employee.additionalCompanies).
-  additionalEmployees Employee[] @relation("EmployeeAdditionalCompanies")
+  additionalEmployees Employee[] @relation("EmployeeAdditionalCompanies", fields: [additionalEmployeeIds], references: [id])
+  additionalEmployeeIds String[] @db.ObjectId
   tasks       Task[]
 }
 
 model Department {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
-  companyId String
+  companyId String   @db.ObjectId
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -86,7 +90,7 @@ model Department {
 }
 
 model Employee {
-  id           String    @id @default(cuid())
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
   employeeCode String    @unique
   name         String
   designation  String
@@ -99,15 +103,16 @@ model Employee {
 
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id])
-  companyId    String
+  companyId    String     @db.ObjectId
   company      Company    @relation("EmployeePrimaryCompany", fields: [companyId], references: [id])
 
   // Companies this employee is also mapped to, beyond their primary company/department above —
   // e.g. so they show up as assignable when a task is created under one of these companies.
-  additionalCompanies Company[] @relation("EmployeeAdditionalCompanies")
+  additionalCompanies   Company[] @relation("EmployeeAdditionalCompanies", fields: [additionalCompanyIds], references: [id])
+  additionalCompanyIds  String[]  @db.ObjectId
 
-  managerId String?
-  manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
+  managerId String?    @db.ObjectId
+  manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   reports   Employee[] @relation("EmployeeManager")
 
   // Per-employee opt-in to the (otherwise admin-only) Monthly Expenses tab — full access (add,
@@ -123,15 +128,28 @@ model Employee {
 }
 
 model TaskCategory {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String   @unique
   createdAt DateTime @default(now())
 
   tasks Task[]
 }
 
+// Atomic sequence generator — MongoDB has no native autoincrement, so a task's human-readable
+// number is handed out by findOneAndUpdate($inc) against a single row keyed by `name` (see
+// nextTaskNumber in src/lib/services/task-service.ts).
+model Counter {
+  id    String @id @map("_id")
+  value Int    @default(0)
+}
+
 model Task {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  // Sequential, human-readable number assigned once at creation (see Counter model above);
+  // formatted for display as `TSK-` + zero-padded string by formatTaskNumber(). Never reused or
+  // renumbered, so it stays a stable, sortable proxy for creation order even though Task.id itself
+  // is now an ObjectId.
+  taskNumber  Int      @unique
   title       String
   description String?
   priority    String // P1_URGENT | P2_MEDIUM | P3_LOW
@@ -158,14 +176,14 @@ model Task {
   groupId String?
 
   assignedToId String
-  assignedTo   Employee @relation("AssignedTo", fields: [assignedToId], references: [id])
-  assignedById String
-  assignedBy   User     @relation("AssignedBy", fields: [assignedById], references: [id])
+  assignedTo   Employee @relation("AssignedTo", fields: [assignedToId], references: [id], onUpdate: NoAction)
+  assignedById String   @db.ObjectId
+  assignedBy   User     @relation("AssignedBy", fields: [assignedById], references: [id], onUpdate: NoAction)
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id])
-  companyId    String
+  companyId    String     @db.ObjectId
   company      Company    @relation(fields: [companyId], references: [id])
-  categoryId   String?
+  categoryId   String?    @db.ObjectId
   category     TaskCategory? @relation(fields: [categoryId], references: [id])
 
   history TaskHistory[]
@@ -187,7 +205,7 @@ model Task {
 // correlated to earlier months of the same series only by recurringGroupId (same non-FK
 // correlation-key pattern as Task.groupId above).
 model MonthlyExpense {
-  id               String    @id @default(cuid())
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
   name             String
   dueDate          DateTime
   amount           Float
@@ -204,11 +222,11 @@ model MonthlyExpense {
 }
 
 model TaskHistory {
-  id        String   @id @default(cuid())
-  taskId    Int
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  changedById String
-  changedBy   User   @relation(fields: [changedById], references: [id])
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  taskId    String   @db.ObjectId
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  changedById String @db.ObjectId
+  changedBy   User   @relation(fields: [changedById], references: [id], onUpdate: NoAction)
   action    String // CREATED | UPDATED | STATUS_CHANGED | COMPLETED | REOPENED
   field     String?
   oldValue  String?

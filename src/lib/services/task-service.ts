@@ -20,7 +20,7 @@ export function buildTaskOrderBy(sortByRaw: string, sortDir: "asc" | "desc"): Pr
 
   switch (sortBy) {
     case "taskNumber":
-      return { id: sortDir };
+      return { taskNumber: sortDir };
     case "employee":
       return { assignedTo: { name: sortDir } };
     case "company":
@@ -71,7 +71,7 @@ function buildBucketWhere(bucket: string | null): Prisma.TaskWhereInput {
  */
 export function buildTaskWhere(params: URLSearchParams, session: SessionPayload): Prisma.TaskWhereInput {
   const search = params.get("search")?.trim();
-  const taskIdMatch = search ? /^(TSK-)?0*(\d+)$/i.exec(search) : null;
+  const taskNumberMatch = search ? /^(TSK-)?0*(\d+)$/i.exec(search) : null;
 
   return {
     deletedAt: null,
@@ -99,7 +99,7 @@ export function buildTaskWhere(params: URLSearchParams, session: SessionPayload)
           OR: [
             { title: { contains: search } },
             { description: { contains: search } },
-            ...(taskIdMatch ? [{ id: Number(taskIdMatch[2]) }] : []),
+            ...(taskNumberMatch ? [{ taskNumber: Number(taskNumberMatch[2]) }] : []),
           ],
         }
       : {}),
@@ -119,12 +119,25 @@ type TaskWithRelations = Prisma.TaskGetPayload<{ include: typeof taskInclude }>;
 export function serializeTask(task: TaskWithRelations) {
   return {
     ...task,
-    taskNumber: formatTaskNumber(task.id),
+    taskNumber: formatTaskNumber(task.taskNumber),
     tags: safeParseTags(task.tags),
     delayDays: calculateDelayDays(task.dueDate, task.completedDate),
     isOverdue: isOverdue(task.dueDate, task.completedDate),
     isDueToday: isDueToday(task.dueDate),
   };
+}
+
+/**
+ * Hands out the next sequential Task Number by atomically incrementing a single Counter document
+ * (upserted on first use). MongoDB has no autoincrement column, so this is what replaces it.
+ */
+async function nextTaskNumber(tx: Prisma.TransactionClient): Promise<number> {
+  const counter = await tx.counter.upsert({
+    where: { id: "task" },
+    create: { id: "task", value: 1 },
+    update: { value: { increment: 1 } },
+  });
+  return counter.value;
 }
 
 function safeParseTags(raw: string): string[] {
@@ -182,8 +195,10 @@ async function createLinkedSiblings(
 ) {
   const created: TaskWithRelations[] = [];
   for (const employeeId of employeeIds) {
+    const taskNumber = await nextTaskNumber(tx);
     const task = await tx.task.create({
       data: {
+        taskNumber,
         title: shared.title,
         description: shared.description,
         assignedToId: employeeId,
@@ -195,11 +210,13 @@ async function createLinkedSiblings(
         status: "PENDING",
         assignedDate: shared.assignedDate,
         dueDate: shared.dueDate,
+        completedDate: null,
         progressPercent: 0,
         estimatedHours: shared.estimatedHours,
         remarks: shared.remarks,
         tags: shared.tags,
         groupId,
+        deletedAt: null,
       },
       include: taskInclude,
     });
@@ -218,8 +235,10 @@ export async function createTask(input: TaskCreateInput, session: SessionPayload
   const groupId = additionalIds.length > 0 ? randomUUID() : null;
 
   const { task, linkedTasks } = await prisma.$transaction(async (tx) => {
+    const taskNumber = await nextTaskNumber(tx);
     const created = await tx.task.create({
       data: {
+        taskNumber,
         title: input.title,
         description: input.description || null,
         assignedToId: input.assignedToId,
@@ -231,11 +250,13 @@ export async function createTask(input: TaskCreateInput, session: SessionPayload
         status: input.status ?? "PENDING",
         assignedDate: input.assignedDate,
         dueDate: input.dueDate,
+        completedDate: input.completedDate ?? null,
         progressPercent: input.progressPercent ?? 0,
         estimatedHours: input.estimatedHours ?? null,
         remarks: input.remarks || null,
         tags: JSON.stringify(input.tags ?? []),
         groupId,
+        deletedAt: null,
       },
       include: taskInclude,
     });
@@ -259,7 +280,7 @@ export async function createTask(input: TaskCreateInput, session: SessionPayload
  * must run assertTaskFieldsEditable/assertOwnsTask first) and writing one TaskHistory row per
  * changed field so the activity timeline stays accurate.
  */
-export async function updateTask(taskId: number, patch: TaskUpdateInput, session: SessionPayload) {
+export async function updateTask(taskId: string, patch: TaskUpdateInput, session: SessionPayload) {
   const existing = await prisma.task.findFirst({ where: { id: taskId, deletedAt: null } });
   if (!existing) throw new ApiError(404, "Task not found");
 
@@ -386,7 +407,7 @@ export async function updateTask(taskId: number, patch: TaskUpdateInput, session
   return { task: serializeTask(updated), linkedTasks: linkedTasks.map(serializeTask) };
 }
 
-export async function softDeleteTask(taskId: number, session: SessionPayload) {
+export async function softDeleteTask(taskId: string, session: SessionPayload) {
   const existing = await prisma.task.findFirst({ where: { id: taskId, deletedAt: null } });
   if (!existing) throw new ApiError(404, "Task not found");
   await prisma.$transaction([
@@ -396,7 +417,7 @@ export async function softDeleteTask(taskId: number, session: SessionPayload) {
 }
 
 /** Bulk counterpart of softDeleteTask, used by the spreadsheet's multi-select "Delete" action. */
-export async function bulkSoftDeleteTasks(taskIds: number[], session: SessionPayload): Promise<number> {
+export async function bulkSoftDeleteTasks(taskIds: string[], session: SessionPayload): Promise<number> {
   const existing = await prisma.task.findMany({ where: { id: { in: taskIds }, deletedAt: null }, select: { id: true } });
   const existingIds = existing.map((t) => t.id);
   if (existingIds.length === 0) return 0;

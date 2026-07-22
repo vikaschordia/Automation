@@ -14,7 +14,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
 
-  const rateLimitKey = `${ip}:${parsed.data.email}`;
+  const identifier = parsed.data.identifier.trim();
+  const normalizedEmail = identifier.toLowerCase();
+  const rateLimitKey = `${ip}:${normalizedEmail}`;
   const rateLimit = checkRateLimit(rateLimitKey);
   if (!rateLimit.allowed) {
     return NextResponse.json(
@@ -23,7 +25,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  const user = identifier.includes("@")
+    ? await prisma.user.findUnique({ where: { email: normalizedEmail } })
+    : await prisma.user.findFirst({
+        where: {
+          role: "EMPLOYEE",
+          employee: { name: { equals: identifier } },
+        },
+      });
   if (!user || !user.isActive) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }

@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-export function EditableStatusCell({ taskId, status }: { taskId: number; status: TaskStatus }) {
+export function EditableStatusCell({ taskId, status }: { taskId: string; status: TaskStatus }) {
   const mutation = useUpdateTask({ silent: true });
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -61,7 +61,7 @@ export function EditableStatusCell({ taskId, status }: { taskId: number; status:
   );
 }
 
-export function EditableProgressCell({ taskId, progress }: { taskId: number; progress: number }) {
+export function EditableProgressCell({ taskId, progress }: { taskId: string; progress: number }) {
   const mutation = useUpdateTask({ silent: true });
   const [value, setValue] = useState(progress);
   // Re-sync local draft when the server value changes underneath us (refetch, another editor's
@@ -91,7 +91,7 @@ export function EditableProgressCell({ taskId, progress }: { taskId: number; pro
   );
 }
 
-export function EditableRemarksCell({ taskId, remarks }: { taskId: number; remarks: string | null }) {
+export function EditableRemarksCell({ taskId, remarks }: { taskId: string; remarks: string | null }) {
   const mutation = useUpdateTask({ silent: true });
   const [value, setValue] = useState(remarks ?? "");
   const [lastSeenRemarks, setLastSeenRemarks] = useState(remarks ?? "");

@@ -4,6 +4,8 @@ import { requireSession, apiErrorResponse } from "@/lib/session";
 import { employeeSchema } from "@/lib/validations/employee";
 import { hashPassword } from "@/lib/auth";
 
+const EMPLOYEE_DEFAULT_PASSWORD = process.env.EMPLOYEE_DEFAULT_PASSWORD ?? "Employee@123";
+
 export async function GET(request: NextRequest) {
   try {
     await requireSession(["ADMIN"]);
@@ -91,7 +93,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (data.createLogin) {
-        const passwordHash = await hashPassword(data.password && data.password.length >= 6 ? data.password : "Passw0rd!");
+        const passwordHash = await hashPassword(EMPLOYEE_DEFAULT_PASSWORD);
         await tx.user.create({
           data: {
             email: data.email,

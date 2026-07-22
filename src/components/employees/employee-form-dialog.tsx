@@ -66,7 +66,6 @@ export function EmployeeFormDialog({
       managerId: null,
       canViewExpenses: false,
       createLogin: true,
-      password: "",
     },
   });
 
@@ -96,7 +95,6 @@ export function EmployeeFormDialog({
               managerId: employee.managerId,
               canViewExpenses: employee.canViewExpenses,
               createLogin: false,
-              password: "",
             }
           : {
               employeeCode: "",
@@ -112,7 +110,6 @@ export function EmployeeFormDialog({
               managerId: null,
               canViewExpenses: false,
               createLogin: true,
-              password: "",
             },
       );
     }
@@ -120,9 +117,8 @@ export function EmployeeFormDialog({
 
   async function onSubmit(values: EmployeeInput) {
     if (isEdit && employee) {
-      const { createLogin, password, ...rest } = values;
+      const { createLogin, ...rest } = values;
       void createLogin;
-      void password;
       await updateMutation.mutateAsync({ id: employee.id, input: rest });
     } else {
       await createMutation.mutateAsync(values);
@@ -334,14 +330,6 @@ export function EmployeeFormDialog({
                     Create a login for this employee
                   </Label>
                 </div>
-                {watch("createLogin") && (
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="password" className="text-xs text-muted-foreground">
-                      Initial password (leave blank for default: Passw0rd!)
-                    </Label>
-                    <Input id="password" type="text" placeholder="Passw0rd!" {...register("password")} />
-                  </div>
-                )}
               </div>
             )}
           </form>

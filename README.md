@@ -30,14 +30,16 @@ npm run db:seed       # 3 companies, 10 departments, 10 employees, ~69 sample ta
 npm run dev
 ```
 
+Set `ADMIN_PASSWORD` in `.env` before running `npm run db:seed`. Employees use the shared `EMPLOYEE_DEFAULT_PASSWORD`, which defaults to `Employee@123` if not set.
+
 Open [http://localhost:3000](http://localhost:3000). Sign in with one of the seeded accounts:
 
-| Role | Email | Password |
+| Role | Login | Password |
 |---|---|---|
-| Admin | `admin@tasktracker.local` | `Passw0rd!` |
-| Employee | `rohit.sharma@tasktracker.local` (or any other seeded employee — see console output after seeding) | `Passw0rd!` |
+| Admin | `admin@tasktracker.local` | Set `ADMIN_PASSWORD` in `.env` before seeding |
+| Employee | `Rohit Sharma` or `rohit.sharma@tasktracker.local` (or any other seeded employee) | `Employee@123` by default |
 
-Change `SEED_DEFAULT_PASSWORD` in `.env` before seeding if you want a different default password.
+Change `EMPLOYEE_DEFAULT_PASSWORD` in `.env` before seeding if you want a different shared employee password. Admin and employee passwords are separate; the admin password is never shown in the employee form or seed output.
 
 ### Other scripts
 

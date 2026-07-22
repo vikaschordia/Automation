@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
           departmentId: data.departmentId,
           companyId: data.companyId,
           managerId: data.managerId || null,
+          canViewExpenses: data.canViewExpenses ?? false,
           additionalCompanies: additionalCompanyIds.length > 0 ? { connect: additionalCompanyIds.map((id) => ({ id })) } : undefined,
         },
       });

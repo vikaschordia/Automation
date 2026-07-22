@@ -32,8 +32,25 @@ model User {
 
   assignedTasks Task[]        @relation("AssignedBy")
   taskHistory   TaskHistory[]
+  notes         Note[]
 
   @@index([role])
+}
+
+// Personal scratch-pad notes for the floating Notes widget — always scoped to the owning user,
+// never shared or admin-visible, regardless of role. Deliberately has no relation to Task/Employee;
+// it's a personal to-do list, not part of task tracking.
+model Note {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  done      Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Company {
@@ -92,6 +109,10 @@ model Employee {
   managerId String?
   manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
   reports   Employee[] @relation("EmployeeManager")
+
+  // Per-employee opt-in to the (otherwise admin-only) Monthly Expenses tab — read-only access,
+  // toggled from the employee create/edit form. Defaults off for every existing employee.
+  canViewExpenses Boolean @default(false)
 
   user          User?  @relation("UserEmployee")
   assignedTasks Task[] @relation("AssignedTo")

@@ -39,9 +39,14 @@ export const EMPLOYEE_NAV: NavItem[] = [
   { href: "/tasks", label: "My Tasks", icon: ListTodo },
 ];
 
-export function Sidebar({ role }: { role: Role }) {
+export function Sidebar({ role, canViewExpenses }: { role: Role; canViewExpenses?: boolean }) {
   const pathname = usePathname();
-  const items = role === "ADMIN" ? ADMIN_NAV : EMPLOYEE_NAV;
+  const items =
+    role === "ADMIN"
+      ? ADMIN_NAV
+      : canViewExpenses
+        ? [...EMPLOYEE_NAV, { href: "/expenses", label: "Monthly Expenses", icon: Wallet }]
+        : EMPLOYEE_NAV;
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">

@@ -171,7 +171,7 @@ export default function ReportsPage() {
                 )}
                 {data?.tasks.map((t) => (
                   <TableRow key={t.id}>
-                    <TableCell className="max-w-64 truncate font-medium">{t.title}</TableCell>
+                    <TableCell className="max-w-64 truncate font-medium" title={t.title}>{t.title}</TableCell>
                     <TableCell>{t.assignedTo.name}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{t.company.name}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{t.department.name}</TableCell>
@@ -287,7 +287,7 @@ export default function ReportsPage() {
                     <TableCell className="whitespace-nowrap">{t.assignedTo.name}</TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">{t.company.name}</TableCell>
                     <TableCell className="whitespace-nowrap font-mono text-xs text-primary">{t.taskNumber}</TableCell>
-                    <TableCell className="max-w-56 truncate font-medium">{t.title}</TableCell>
+                    <TableCell className="max-w-56 truncate font-medium" title={t.title}>{t.title}</TableCell>
                     <TableCell>
                       <PriorityBadge priority={t.priority} />
                     </TableCell>
@@ -300,7 +300,7 @@ export default function ReportsPage() {
                     <TableCell className="text-right">
                       {t.delayDays > 0 ? <span className="font-medium text-red-600">{t.delayDays}</span> : "—"}
                     </TableCell>
-                    <TableCell className="max-w-48 truncate text-muted-foreground">{t.remarks || "—"}</TableCell>
+                    <TableCell className="max-w-48 truncate text-muted-foreground" title={t.remarks || undefined}>{t.remarks || "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

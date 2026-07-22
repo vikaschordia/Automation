@@ -16,6 +16,7 @@ export const employeeSchema = z.object({
   // enforced server-side rather than trusted from the client.
   additionalCompanyIds: z.array(z.string()).max(50).optional(),
   managerId: z.string().optional().nullable(),
+  canViewExpenses: z.boolean().optional(),
   createLogin: z.boolean().optional(),
   password: z.string().min(6, "Password must be at least 6 characters").optional().or(z.literal("")),
 });

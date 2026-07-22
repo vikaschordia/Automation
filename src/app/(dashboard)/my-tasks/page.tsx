@@ -28,7 +28,7 @@ function TaskList({ tasks, emptyMessage }: { tasks: EmployeeTaskRow[]; emptyMess
       {tasks.map((task) => (
         <Link key={task.id} href={`/tasks/${task.id}`} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-accent">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{task.title}</p>
+            <p className="truncate text-sm font-medium" title={task.title}>{task.title}</p>
             <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
               <span>Due {formatDate(task.dueDate)}</span>
               <StatusBadge status={task.status} />
@@ -138,7 +138,7 @@ export default function EmployeeDashboardPage() {
             <ol className="flex flex-col gap-3">
               {recentActivity.map((entry) => (
                 <li key={entry.id} className="text-sm">
-                  <Link href={`/tasks/${entry.taskId}`} className="line-clamp-1 font-medium hover:underline">
+                  <Link href={`/tasks/${entry.taskId}`} className="line-clamp-1 font-medium hover:underline" title={entry.taskTitle}>
                     {entry.taskTitle}
                   </Link>
                   <p className="text-xs text-muted-foreground">

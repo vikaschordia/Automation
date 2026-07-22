@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Download, Plus, Pencil, Trash2, CircleCheck, Undo2, Wallet } from "lucide-react";
+import { useSession } from "@/components/layout/session-provider";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ExpenseFormDialog } from "@/components/expenses/expense-form-dialog";
@@ -26,6 +27,10 @@ function shiftMonth(year: number, month: number, delta: number): { year: number;
 }
 
 export default function ExpensesPage() {
+  const { role } = useSession();
+  const canManage = role === "ADMIN";
+  const columnCount = canManage ? 8 : 7;
+
   const now = new Date();
   const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
 
@@ -46,16 +51,22 @@ export default function ExpensesPage() {
     <div>
       <PageHeader
         title="Monthly Expenses"
-        description="Track fixed monthly expenses — rent, subscriptions, and other recurring bills."
+        description={
+          canManage
+            ? "Track fixed monthly expenses — rent, subscriptions, and other recurring bills."
+            : "View-only access to fixed monthly expenses."
+        }
         actions={
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setFormOpen(true);
-            }}
-          >
-            <Plus className="size-4" /> Add expense
-          </Button>
+          canManage ? (
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
+            >
+              <Plus className="size-4" /> Add expense
+            </Button>
+          ) : undefined
         }
       />
 
@@ -107,14 +118,14 @@ export default function ExpensesPage() {
               <TableHead>Status</TableHead>
               <TableHead>Paid Date</TableHead>
               <TableHead>Remarks</TableHead>
-              <TableHead className="w-28 text-right">Actions</TableHead>
+              {canManage && <TableHead className="w-28 text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading &&
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 8 }).map((__, j) => (
+                  {Array.from({ length: columnCount }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-5 w-full" />
                     </TableCell>
@@ -123,9 +134,9 @@ export default function ExpensesPage() {
               ))}
             {!isLoading && expenses.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="py-12 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={columnCount} className="py-12 text-center text-sm text-muted-foreground">
                   <Wallet className="mx-auto mb-2 size-8 opacity-40" />
-                  No expenses for {MONTH_NAMES[cursor.month - 1]} {cursor.year}. Add one to get started.
+                  No expenses for {MONTH_NAMES[cursor.month - 1]} {cursor.year}.{canManage && " Add one to get started."}
                 </TableCell>
               </TableRow>
             )}
@@ -143,66 +154,72 @@ export default function ExpensesPage() {
                   <ExpenseStatusBadge status={e.status} />
                 </TableCell>
                 <TableCell>{formatDate(e.paidDate)}</TableCell>
-                <TableCell className="max-w-48 truncate text-muted-foreground">{e.remarks || "—"}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    {e.status === "UNPAID" ? (
-                      <Button variant="ghost" size="icon" className="size-7" title="Mark Paid" onClick={() => setMarking(e)}>
-                        <CircleCheck className="size-3.5 text-emerald-600" />
+                <TableCell className="max-w-48 truncate text-muted-foreground" title={e.remarks || undefined}>{e.remarks || "—"}</TableCell>
+                {canManage && (
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      {e.status === "UNPAID" ? (
+                        <Button variant="ghost" size="icon" className="size-7" title="Mark Paid" onClick={() => setMarking(e)}>
+                          <CircleCheck className="size-3.5 text-emerald-600" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7"
+                          title="Mark Unpaid"
+                          onClick={() => updateMutation.mutate({ id: e.id, input: { status: "UNPAID" } })}
+                        >
+                          <Undo2 className="size-3.5" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" className="size-7" onClick={() => { setEditing(e); setFormOpen(true); }}>
+                        <Pencil className="size-3.5" />
                       </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7"
-                        title="Mark Unpaid"
-                        onClick={() => updateMutation.mutate({ id: e.id, input: { status: "UNPAID" } })}
-                      >
-                        <Undo2 className="size-3.5" />
+                      <Button variant="ghost" size="icon" className="size-7 text-destructive" onClick={() => setDeleting(e)}>
+                        <Trash2 className="size-3.5" />
                       </Button>
-                    )}
-                    <Button variant="ghost" size="icon" className="size-7" onClick={() => { setEditing(e); setFormOpen(true); }}>
-                      <Pencil className="size-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="size-7 text-destructive" onClick={() => setDeleting(e)}>
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </div>
-                </TableCell>
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
 
-      <ExpenseFormDialog open={formOpen} onOpenChange={setFormOpen} expense={editing} year={cursor.year} month={cursor.month} />
+      {canManage && (
+        <>
+          <ExpenseFormDialog open={formOpen} onOpenChange={setFormOpen} expense={editing} year={cursor.year} month={cursor.month} />
 
-      <MarkPaidDialog
-        open={!!marking}
-        onOpenChange={(o) => !o && setMarking(null)}
-        loading={updateMutation.isPending}
-        expenseName={marking?.name}
-        onConfirm={(paidDate) =>
-          updateMutation.mutate(
-            { id: marking!.id, input: { status: "PAID", paidDate } },
-            { onSuccess: () => setMarking(null) },
-          )
-        }
-      />
+          <MarkPaidDialog
+            open={!!marking}
+            onOpenChange={(o) => !o && setMarking(null)}
+            loading={updateMutation.isPending}
+            expenseName={marking?.name}
+            onConfirm={(paidDate) =>
+              updateMutation.mutate(
+                { id: marking!.id, input: { status: "PAID", paidDate } },
+                { onSuccess: () => setMarking(null) },
+              )
+            }
+          />
 
-      <ConfirmDialog
-        open={!!deleting}
-        onOpenChange={(o) => !o && setDeleting(null)}
-        title={`Delete "${deleting?.name}"?`}
-        description="This can't be undone. If this is part of a recurring series, only this month's entry is removed."
-        confirmLabel="Delete"
-        loading={deleteMutation.isPending}
-        onConfirm={async () => {
-          if (!deleting) return;
-          await deleteMutation.mutateAsync(deleting.id);
-          setDeleting(null);
-        }}
-      />
+          <ConfirmDialog
+            open={!!deleting}
+            onOpenChange={(o) => !o && setDeleting(null)}
+            title={`Delete "${deleting?.name}"?`}
+            description="This can't be undone. If this is part of a recurring series, only this month's entry is removed."
+            confirmLabel="Delete"
+            loading={deleteMutation.isPending}
+            onConfirm={async () => {
+              if (!deleting) return;
+              await deleteMutation.mutateAsync(deleting.id);
+              setDeleting(null);
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }

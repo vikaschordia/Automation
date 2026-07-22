@@ -84,7 +84,7 @@ export function TaskTable({
         id: "employee",
         header: "Employee",
         size: 150,
-        cell: (info) => <span className="truncate">{info.getValue()}</span>,
+        cell: (info) => <span className="truncate" title={info.getValue()}>{info.getValue()}</span>,
       }),
       columnHelper.accessor((row) => row.company.name, {
         id: "company",
@@ -101,7 +101,7 @@ export function TaskTable({
         size: 260,
         cell: (info) => (
           <div className="flex min-w-0 items-center gap-1.5">
-            <Link href={`/tasks/${info.row.original.id}`} className="line-clamp-1 min-w-0 hover:underline">
+            <Link href={`/tasks/${info.row.original.id}`} className="line-clamp-1 min-w-0 hover:underline" title={info.getValue()}>
               {info.getValue()}
             </Link>
             {info.row.original.groupId && (

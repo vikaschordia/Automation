@@ -64,6 +64,7 @@ export function EmployeeFormDialog({
       companyId: "",
       additionalCompanyIds: [],
       managerId: null,
+      canViewExpenses: false,
       createLogin: true,
       password: "",
     },
@@ -93,6 +94,7 @@ export function EmployeeFormDialog({
               companyId: employee.companyId,
               additionalCompanyIds: employee.additionalCompanies.map((c) => c.id),
               managerId: employee.managerId,
+              canViewExpenses: employee.canViewExpenses,
               createLogin: false,
               password: "",
             }
@@ -108,6 +110,7 @@ export function EmployeeFormDialog({
               companyId: "",
               additionalCompanyIds: [],
               managerId: null,
+              canViewExpenses: false,
               createLogin: true,
               password: "",
             },
@@ -305,6 +308,18 @@ export function EmployeeFormDialog({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-md border px-3 py-2.5">
+              <Checkbox
+                id="canViewExpenses"
+                checked={watch("canViewExpenses")}
+                onCheckedChange={(v) => setValue("canViewExpenses", v === true)}
+              />
+              <Label htmlFor="canViewExpenses" className="cursor-pointer text-sm font-normal">
+                Can view Monthly Expenses tab
+                <span className="ml-1 text-xs text-muted-foreground">(read-only — view and export, not edit)</span>
+              </Label>
             </div>
 
             {!isEdit && (

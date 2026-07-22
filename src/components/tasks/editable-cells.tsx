@@ -105,6 +105,7 @@ export function EditableRemarksCell({ taskId, remarks }: { taskId: number; remar
       <Input
         value={value}
         placeholder="Add remarks..."
+        title={value || undefined}
         onChange={(e) => setValue(e.target.value)}
         onBlur={() => {
           if (value !== (remarks ?? "")) mutation.mutate({ id: taskId, input: { remarks: value } });

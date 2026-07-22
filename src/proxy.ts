@@ -2,10 +2,14 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifySession, signSession, SESSION_MAX_AGE } from "@/lib/auth";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/constants";
+import { prisma } from "@/lib/prisma";
 
 // Next.js 16 renamed middleware.ts -> proxy.ts (function `proxy`). Runs in the Node.js
 // runtime, which is what we need anyway since it shares code with the route handlers.
-const ADMIN_ONLY_PREFIXES = ["/dashboard", "/companies", "/departments", "/employees", "/categories", "/reports", "/expenses"];
+const ADMIN_ONLY_PREFIXES = ["/dashboard", "/companies", "/departments", "/employees", "/categories", "/reports"];
+// Admin-only by default, but an individual employee can be opted in (Employee.canViewExpenses) —
+// checked separately below instead of via the blanket admin-only list.
+const CONDITIONAL_PREFIXES = ["/expenses"];
 const PUBLIC_PATHS = ["/login"];
 
 export async function proxy(request: NextRequest) {
@@ -35,6 +39,16 @@ export async function proxy(request: NextRequest) {
   const isAdminOnlyPath = ADMIN_ONLY_PREFIXES.some((p) => pathname.startsWith(p));
   if (isAdminOnlyPath && session.role !== "ADMIN") {
     return NextResponse.redirect(new URL("/my-tasks", request.url));
+  }
+
+  const isConditionalPath = CONDITIONAL_PREFIXES.some((p) => pathname.startsWith(p));
+  if (isConditionalPath && session.role !== "ADMIN") {
+    const employee = session.employeeId
+      ? await prisma.employee.findUnique({ where: { id: session.employeeId }, select: { canViewExpenses: true } })
+      : null;
+    if (!employee?.canViewExpenses) {
+      return NextResponse.redirect(new URL("/my-tasks", request.url));
+    }
   }
 
   // Sliding expiration: re-issue the cookie with a fresh TTL on every authenticated request.

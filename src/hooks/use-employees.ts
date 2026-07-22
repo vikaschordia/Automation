@@ -15,6 +15,7 @@ export interface EmployeeRow {
   departmentId: string;
   companyId: string;
   managerId: string | null;
+  canViewExpenses: boolean;
   company: { id: string; name: string };
   department: { id: string; name: string };
   additionalCompanies: { id: string; name: string }[];

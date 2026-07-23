@@ -5,7 +5,8 @@ import { formatTaskNumber } from "@/lib/task-number";
 import { calculateDelayDays } from "@/lib/delay";
 
 export interface ExportableTask {
-  id: number;
+  id: string;
+  taskNumber: number;
   title: string;
   priority: string;
   status: string;
@@ -61,7 +62,7 @@ export function addTaskListSheet(
   tasks.forEach((task) => {
     const delay = calculateDelayDays(task.dueDate, task.completedDate);
     const row = worksheet.addRow({
-      taskId: formatTaskNumber(task.id),
+      taskId: formatTaskNumber(task.taskNumber),
       title: task.title,
       employee: task.assignedTo.name,
       employeeCode: task.assignedTo.employeeCode,

@@ -4,7 +4,7 @@ import type { TaskCreateInput, TaskUpdateInput } from "@/lib/validations/task";
 import type { TaskPriority, TaskStatus } from "@/lib/constants";
 
 export interface TaskRow {
-  id: number;
+  id: string;
   taskNumber: string;
   title: string;
   description: string | null;
@@ -99,7 +99,7 @@ export function useTasks(filters: TaskFilters) {
   });
 }
 
-export function useTask(id: number | null) {
+export function useTask(id: string | null) {
   return useQuery<TaskDetailResponse>({
     queryKey: ["task", id],
     queryFn: async () => jsonOrThrow(await fetch(`/api/tasks/${id}`)),
@@ -123,7 +123,7 @@ export function useCreateTask() {
 export function useUpdateTask(options?: { silent?: boolean }) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, input }: { id: number; input: Partial<TaskUpdateInput> }) =>
+    mutationFn: async ({ id, input }: { id: string; input: Partial<TaskUpdateInput> }) =>
       jsonOrThrow(await fetch(`/api/tasks/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) })),
     onSuccess: (data: { task: TaskRow; linkedTasks: TaskRow[] }, variables) => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
@@ -139,7 +139,7 @@ export function useUpdateTask(options?: { silent?: boolean }) {
 export function useDeleteTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: number) => jsonOrThrow(await fetch(`/api/tasks/${id}`, { method: "DELETE" })),
+    mutationFn: async (id: string) => jsonOrThrow(await fetch(`/api/tasks/${id}`, { method: "DELETE" })),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       toast.success("Task deleted");
@@ -151,7 +151,7 @@ export function useDeleteTask() {
 export function useBulkUpdateTasks() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { taskIds: number[]; patch: Record<string, unknown> }) =>
+    mutationFn: async (input: { taskIds: string[]; patch: Record<string, unknown> }) =>
       jsonOrThrow(await fetch("/api/tasks/bulk", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) })),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
@@ -164,7 +164,7 @@ export function useBulkUpdateTasks() {
 export function useBulkDeleteTasks() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (taskIds: number[]) =>
+    mutationFn: async (taskIds: string[]) =>
       jsonOrThrow(
         await fetch("/api/tasks/bulk", {
           method: "DELETE",

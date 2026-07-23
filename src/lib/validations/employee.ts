@@ -18,7 +18,6 @@ export const employeeSchema = z.object({
   managerId: z.string().optional().nullable(),
   canViewExpenses: z.boolean().optional(),
   createLogin: z.boolean().optional(),
-  password: z.string().min(6, "Password must be at least 6 characters").optional().or(z.literal("")),
 });
 
 export type EmployeeInput = z.infer<typeof employeeSchema>;

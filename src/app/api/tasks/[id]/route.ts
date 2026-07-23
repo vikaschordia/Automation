@@ -7,7 +7,7 @@ import { serializeTask, taskInclude, updateTask, softDeleteTask, getGroupSummary
 
 type Params = Promise<{ id: string }>;
 
-async function loadTaskOr404(id: number) {
+async function loadTaskOr404(id: string) {
   const task = await prisma.task.findFirst({ where: { id, deletedAt: null }, include: taskInclude });
   if (!task) throw new ApiError(404, "Task not found");
   return task;
@@ -16,9 +16,7 @@ async function loadTaskOr404(id: number) {
 export async function GET(_request: NextRequest, { params }: { params: Params }) {
   try {
     const session = await requireSession();
-    const { id } = await params;
-    const taskId = Number(id);
-    if (!Number.isInteger(taskId)) throw new ApiError(400, "Invalid task id");
+    const { id: taskId } = await params;
 
     const task = await loadTaskOr404(taskId);
     assertOwnsTask(session.role, session.employeeId, task.assignedToId);
@@ -48,9 +46,7 @@ export async function GET(_request: NextRequest, { params }: { params: Params })
 export async function PATCH(request: NextRequest, { params }: { params: Params }) {
   try {
     const session = await requireSession();
-    const { id } = await params;
-    const taskId = Number(id);
-    if (!Number.isInteger(taskId)) throw new ApiError(400, "Invalid task id");
+    const { id: taskId } = await params;
 
     const body = await request.json().catch(() => null);
     const parsed = taskUpdateSchema.safeParse(body);
@@ -72,9 +68,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
 export async function DELETE(_request: NextRequest, { params }: { params: Params }) {
   try {
     const session = await requireSession(["ADMIN"]);
-    const { id } = await params;
-    const taskId = Number(id);
-    if (!Number.isInteger(taskId)) throw new ApiError(400, "Invalid task id");
+    const { id: taskId } = await params;
     await softDeleteTask(taskId, session);
     return NextResponse.json({ ok: true });
   } catch (error) {

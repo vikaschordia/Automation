@@ -56,7 +56,7 @@ function TasksPageInner() {
   const [editing, setEditing] = useState<TaskRow | null>(null);
   const [deleting, setDeleting] = useState<TaskRow | null>(null);
 
-  const selectedIds = Object.keys(rowSelection).filter((k) => rowSelection[k]).map(Number);
+  const selectedIds = Object.keys(rowSelection).filter((k) => rowSelection[k]);
 
   return (
     <div>

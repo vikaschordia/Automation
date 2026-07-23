@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const q = request.nextUrl.searchParams.get("q")?.trim() ?? "";
     if (q.length < 2) return NextResponse.json({ tasks: [], employees: [] });
 
-    const taskIdMatch = /^(TSK-)?0*(\d+)$/i.exec(q);
+    const taskNumberMatch = /^(TSK-)?0*(\d+)$/i.exec(q);
 
     const tasks = await prisma.task.findMany({
       where: {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
         OR: [
           { title: { contains: q } },
           { description: { contains: q } },
-          ...(taskIdMatch ? [{ id: Number(taskIdMatch[2]) }] : []),
+          ...(taskNumberMatch ? [{ taskNumber: Number(taskNumberMatch[2]) }] : []),
         ],
       },
       take: 8,
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       tasks: tasks.map((t) => ({
         id: t.id,
-        taskNumber: formatTaskNumber(t.id),
+        taskNumber: formatTaskNumber(t.taskNumber),
         title: t.title,
         status: t.status,
         assignedToName: t.assignedTo.name,

@@ -25,8 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const taskId = Number(id);
+  const { id: taskId } = use(params);
   const router = useRouter();
   const { role } = useSession();
   const { data, isLoading } = useTask(taskId);

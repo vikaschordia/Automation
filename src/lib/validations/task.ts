@@ -38,7 +38,7 @@ export type TaskCreateInput = z.infer<typeof taskCreateSchema>;
 export type TaskUpdateInput = z.infer<typeof taskUpdateSchema>;
 
 export const bulkUpdateSchema = z.object({
-  taskIds: z.array(z.number().int()).min(1, "Select at least one task"),
+  taskIds: z.array(z.string().min(1)).min(1, "Select at least one task"),
   patch: z.object({
     status: z.enum(TASK_STATUSES).optional(),
     priority: z.enum(TASK_PRIORITIES).optional(),
@@ -51,6 +51,6 @@ export const bulkUpdateSchema = z.object({
 export type BulkUpdateInput = z.infer<typeof bulkUpdateSchema>;
 
 export const bulkDeleteSchema = z.object({
-  taskIds: z.array(z.number().int()).min(1, "Select at least one task"),
+  taskIds: z.array(z.string().min(1)).min(1, "Select at least one task"),
 });
 export type BulkDeleteInput = z.infer<typeof bulkDeleteSchema>;

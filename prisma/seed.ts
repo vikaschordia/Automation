@@ -17,13 +17,19 @@ const rand = mulberry32(42);
 const pick = <T,>(arr: readonly T[]): T => arr[Math.floor(rand() * arr.length)];
 const randInt = (min: number, max: number) => Math.floor(rand() * (max - min + 1)) + min;
 
-const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD ?? "Passw0rd!";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const EMPLOYEE_DEFAULT_PASSWORD = process.env.EMPLOYEE_DEFAULT_PASSWORD ?? "Employee@123";
 
 async function main() {
+  if (!ADMIN_PASSWORD) {
+    throw new Error("ADMIN_PASSWORD must be set in .env before running db:seed");
+  }
+
   console.log("Seeding database...");
 
   await prisma.taskHistory.deleteMany();
   await prisma.task.deleteMany();
+  await prisma.counter.deleteMany();
   await prisma.taskCategory.deleteMany();
   await prisma.employee.updateMany({ data: { managerId: null } });
   await prisma.user.deleteMany();
@@ -31,7 +37,8 @@ async function main() {
   await prisma.department.deleteMany();
   await prisma.company.deleteMany();
 
-  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+  const adminPasswordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
+  const employeePasswordHash = await bcrypt.hash(EMPLOYEE_DEFAULT_PASSWORD, 10);
 
   // ---- Companies ----
   const alpha = await prisma.company.create({ data: { name: "Alpha Industries", code: "ALPHA", address: "Mumbai, India" } });
@@ -72,7 +79,7 @@ async function main() {
   const adminUser = await prisma.user.create({
     data: {
       email: "admin@tasktracker.local",
-      passwordHash,
+      passwordHash: adminPasswordHash,
       role: "ADMIN",
       isActive: true,
     },
@@ -124,7 +131,7 @@ async function main() {
     await prisma.user.create({
       data: {
         email: employee.email,
-        passwordHash,
+        passwordHash: employeePasswordHash,
         role: "EMPLOYEE",
         isActive: employee.status === "ACTIVE",
         employeeId: employee.id,
@@ -170,6 +177,8 @@ async function main() {
   const activeEmployees = employees.filter((e) => e.status === "ACTIVE");
 
   let created = 0;
+  let taskNumberSeq = 0;
+  const nextTaskNumber = () => ++taskNumberSeq;
   const TASK_COUNT = 55;
   for (let i = 0; i < TASK_COUNT; i++) {
     const employee = pick(activeEmployees);
@@ -215,6 +224,7 @@ async function main() {
 
     const task = await prisma.task.create({
       data: {
+        taskNumber: nextTaskNumber(),
         title: `${pick(taskTitles)} #${i + 1}`,
         description: "Auto-generated seed task for demo purposes.",
         priority,
@@ -232,6 +242,7 @@ async function main() {
         departmentId: employee.departmentId,
         companyId: employee.companyId,
         categoryId: category.id,
+        deletedAt: null,
       },
     });
 
@@ -278,6 +289,7 @@ async function main() {
 
       const task = await prisma.task.create({
         data: {
+          taskNumber: nextTaskNumber(),
           title: `${pick(taskTitles)} #${created + 1}`,
           description: "Auto-generated seed task for demo purposes.",
           priority: pick(priorities),
@@ -294,6 +306,7 @@ async function main() {
           departmentId: employee.departmentId,
           companyId: employee.companyId,
           categoryId: category.id,
+          deletedAt: null,
         },
       });
       await prisma.taskHistory.createMany({
@@ -306,9 +319,13 @@ async function main() {
     }
   }
 
+  // Keep the app's atomic task-number counter (see nextTaskNumber in task-service.ts) in sync so
+  // the first task created through the UI after seeding doesn't collide with a seeded taskNumber.
+  await prisma.counter.create({ data: { id: "task", value: taskNumberSeq } });
+
   console.log(`Seeded ${departments.length} departments, ${employees.length} employees, ${created} tasks.`);
-  console.log(`\nLogin as admin:    admin@tasktracker.local / ${DEFAULT_PASSWORD}`);
-  console.log(`Login as employee: ${employees[0].email} / ${DEFAULT_PASSWORD}`);
+  console.log("\nLogin as admin:    admin@tasktracker.local / set ADMIN_PASSWORD in .env");
+  console.log(`Login as employee: ${employees[0].name} or ${employees[0].email} / ${EMPLOYEE_DEFAULT_PASSWORD}`);
 }
 
 main()

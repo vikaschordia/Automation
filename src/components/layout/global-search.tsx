@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/popover";
 
 interface SearchResults {
-  tasks: { id: number; taskNumber: string; title: string; status: string; assignedToName: string }[];
+  tasks: { id: string; taskNumber: string; title: string; status: string; assignedToName: string }[];
   employees: { id: string; name: string; employeeCode: string; designation: string }[];
 }
 

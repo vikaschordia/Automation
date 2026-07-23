@@ -30,7 +30,7 @@ export interface AdminDashboardData {
 }
 
 export interface AlertTask {
-  id: number;
+  id: string;
   taskNumber: string;
   title: string;
   priority: TaskPriority;
@@ -39,7 +39,7 @@ export interface AlertTask {
 }
 
 export interface EmployeeTaskRow {
-  id: number;
+  id: string;
   taskNumber: string;
   title: string;
   priority: TaskPriority;
@@ -54,7 +54,7 @@ export interface EmployeeDashboardData {
   pendingTasks: EmployeeTaskRow[];
   urgentTasks: EmployeeTaskRow[];
   upcomingTasks: EmployeeTaskRow[];
-  recentActivity: { id: string; action: string; field: string | null; createdAt: string; taskId: number; taskTitle: string; changedByEmail: string }[];
+  recentActivity: { id: string; action: string; field: string | null; createdAt: string; taskId: string; taskTitle: string; changedByEmail: string }[];
 }
 
 export function useAdminDashboard() {

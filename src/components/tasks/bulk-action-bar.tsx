@@ -9,7 +9,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export function BulkActionBar({ taskIds, onClear }: { taskIds: number[]; onClear: () => void }) {
+export function BulkActionBar({ taskIds, onClear }: { taskIds: string[]; onClear: () => void }) {
   const mutation = useBulkUpdateTasks();
   const deleteMutation = useBulkDeleteTasks();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);

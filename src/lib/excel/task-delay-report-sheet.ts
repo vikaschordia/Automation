@@ -49,7 +49,7 @@ export function addTaskDelayReportSheet(
     const row = worksheet.addRow({
       employee: task.assignedTo.name,
       company: task.company.name,
-      taskId: formatTaskNumber(task.id),
+      taskId: formatTaskNumber(task.taskNumber),
       title: task.title,
       priority: PRIORITY_META[task.priority as TaskPriority].label,
       status: STATUS_META[task.status as TaskStatus].label,

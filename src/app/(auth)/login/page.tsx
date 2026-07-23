@@ -62,20 +62,19 @@ function LoginForm() {
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle className="text-base">Welcome back</CardTitle>
-            <CardDescription>Enter your work email and password</CardDescription>
+            <CardDescription>Employees can use their name; admins use their email.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="identifier">Email or employee name</Label>
                 <Input
-                  id="email"
-                  type="email"
+                  id="identifier"
                   autoComplete="username"
-                  placeholder="you@company.com"
-                  {...register("email")}
+                  placeholder="Rohit Sharma"
+                  {...register("identifier")}
                 />
-                {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+                {errors.identifier && <p className="text-xs text-destructive">{errors.identifier.message}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="password">Password</Label>

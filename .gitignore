@@ -45,3 +45,6 @@ next-env.d.ts
 /prisma/dev.db-journal
 /prisma/*.db
 /prisma/*.db-journal
+
+# full data exports/backups (contain real business data — never commit these)
+/data-export*.json

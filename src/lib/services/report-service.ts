@@ -24,12 +24,16 @@ export interface EmployeePerformanceRow {
 export async function getEmployeePerformanceReport(filters?: {
   companyId?: string;
   departmentId?: string;
+  employeeId?: string;
   sortBy?: string;
   sortDir?: "asc" | "desc";
 }): Promise<EmployeePerformanceRow[]> {
   const employees = await prisma.employee.findMany({
     where: {
       status: "ACTIVE",
+      // An employee viewing their own Reports tab only ever sees their own row — company/
+      // department filters below are moot in that case (there's only ever one possible row).
+      ...(filters?.employeeId ? { id: filters.employeeId } : {}),
       // Matches primary company OR any additional company the employee is mapped to, same as the
       // Employees list filter — an employee mapped into this company should show up in its report.
       ...(filters?.companyId

@@ -5,8 +5,20 @@ import { departmentSchema } from "@/lib/validations/department";
 
 export async function GET(request: NextRequest) {
   try {
-    await requireSession(["ADMIN"]);
+    const session = await requireSession();
     const companyId = request.nextUrl.searchParams.get("companyId") ?? undefined;
+
+    if (session.role !== "ADMIN") {
+      // Employees may only list departments for a company they're actually mapped to — never
+      // the whole org's department list, and never without a companyId to scope it by.
+      if (!companyId) return NextResponse.json({ departments: [] });
+      const employee = session.employeeId
+        ? await prisma.employee.findUnique({ where: { id: session.employeeId }, select: { companyId: true, additionalCompanyIds: true } })
+        : null;
+      const allowed = !!employee && (employee.companyId === companyId || employee.additionalCompanyIds.includes(companyId));
+      if (!allowed) return NextResponse.json({ departments: [] });
+    }
+
     const departments = await prisma.department.findMany({
       where: companyId ? { companyId } : undefined,
       orderBy: [{ company: { name: "asc" } }, { name: "asc" }],

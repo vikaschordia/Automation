@@ -6,6 +6,7 @@ import { useTasks, buildTaskQuery, type TaskFilters as TaskFiltersState } from "
 import { useEmployeePerformanceReport } from "@/hooks/use-reports";
 import { useCompanies } from "@/hooks/use-companies";
 import { useDepartments } from "@/hooks/use-departments";
+import { useSession } from "@/components/layout/session-provider";
 import { PageHeader } from "@/components/shared/page-header";
 import { TaskFilters } from "@/components/tasks/task-filters";
 import { PriorityBadge } from "@/components/tasks/priority-badge";
@@ -29,6 +30,8 @@ const DATE_PRESETS = [
 ] as const;
 
 export default function ReportsPage() {
+  const { role } = useSession();
+  const isAdmin = role === "ADMIN";
   const [filters, setFilters] = useState<TaskFiltersState>({ page: 1, pageSize: 10 });
   // Newest-due first by default. Without an explicit sort this fell back to the same
   // ascending-due-date order the spreadsheet view uses, which is right for "what's due soon" but
@@ -52,8 +55,8 @@ export default function ReportsPage() {
   const [perfCompany, setPerfCompany] = useState("all");
   const [perfDept, setPerfDept] = useState("all");
   const [perfSort, setPerfSort] = useState<SimpleSort>({ by: "name", dir: "asc" });
-  const { data: companies } = useCompanies();
-  const { data: departments } = useDepartments(perfCompany === "all" ? undefined : perfCompany);
+  const { data: companies } = useCompanies({ enabled: isAdmin });
+  const { data: departments } = useDepartments(perfCompany === "all" ? undefined : perfCompany, { enabled: isAdmin });
   const { data: performanceRows, isLoading: perfLoading } = useEmployeePerformanceReport({
     companyId: perfCompany === "all" ? undefined : perfCompany,
     departmentId: perfDept === "all" ? undefined : perfDept,
@@ -70,7 +73,14 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <PageHeader title="Reports" description="Employee, department, company, priority, status and date-range reports — export any of them to Excel." />
+      <PageHeader
+        title="Reports"
+        description={
+          isAdmin
+            ? "Employee, department, company, priority, status and date-range reports — export any of them to Excel."
+            : "Your own task and performance reports — export any of them to Excel."
+        }
+      />
 
       <Tabs defaultValue="tasks">
         <TabsList>
@@ -98,7 +108,7 @@ export default function ReportsPage() {
             </Button>
           </div>
 
-          <TaskFilters role="ADMIN" filters={filters} onChange={setFilters} />
+          <TaskFilters role={role} filters={filters} onChange={setFilters} />
 
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
@@ -204,7 +214,7 @@ export default function ReportsPage() {
             </Button>
           </div>
 
-          <TaskFilters role="ADMIN" filters={delayFilters} onChange={setDelayFilters} />
+          <TaskFilters role={role} filters={delayFilters} onChange={setDelayFilters} />
 
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
@@ -310,32 +320,36 @@ export default function ReportsPage() {
 
         <TabsContent value="performance" className="mt-4">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <Select value={perfCompany} onValueChange={(v) => { setPerfCompany(v); setPerfDept("all"); }}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="All companies" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All companies</SelectItem>
-                {companies?.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={perfDept} onValueChange={setPerfDept} disabled={perfCompany === "all"}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="All departments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All departments</SelectItem>
-                {departments?.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isAdmin && (
+              <>
+                <Select value={perfCompany} onValueChange={(v) => { setPerfCompany(v); setPerfDept("all"); }}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="All companies" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All companies</SelectItem>
+                    {companies?.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={perfDept} onValueChange={setPerfDept} disabled={perfCompany === "all"}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="All departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All departments</SelectItem>
+                    {departments?.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
             <Button
               asChild
               className="ml-auto"

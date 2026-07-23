@@ -7,19 +7,30 @@ import { excelResponseHeaders, toResponseBody, workbookToBuffer } from "@/lib/ex
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await requireSession(["ADMIN"]);
+    const session = await requireSession();
     const params = request.nextUrl.searchParams;
-    const rows = await getEmployeePerformanceReport({
-      companyId: params.get("companyId") ?? undefined,
-      departmentId: params.get("departmentId") ?? undefined,
-      sortBy: params.get("sortBy") ?? undefined,
-      sortDir: params.get("sortDir") === "desc" ? "desc" : "asc",
-    });
+    const rows = await getEmployeePerformanceReport(
+      session.role === "ADMIN"
+        ? {
+            companyId: params.get("companyId") ?? undefined,
+            departmentId: params.get("departmentId") ?? undefined,
+            sortBy: params.get("sortBy") ?? undefined,
+            sortDir: params.get("sortDir") === "desc" ? "desc" : "asc",
+          }
+        : {
+            employeeId: session.employeeId ?? "__none__",
+            sortBy: params.get("sortBy") ?? undefined,
+            sortDir: params.get("sortDir") === "desc" ? "desc" : "asc",
+          },
+    );
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "Daily Task Tracker";
     workbook.created = new Date();
-    addEmployeePerformanceSheet(workbook, rows, { title: "Employee Performance Report", generatedBy: session.name });
+    addEmployeePerformanceSheet(workbook, rows, {
+      title: session.role === "ADMIN" ? "Employee Performance Report" : `Performance — ${session.name}`,
+      generatedBy: session.name,
+    });
 
     const buffer = await workbookToBuffer(workbook);
     return new NextResponse(toResponseBody(buffer), { headers: excelResponseHeaders(`employee-performance-${Date.now()}.xlsx`) });

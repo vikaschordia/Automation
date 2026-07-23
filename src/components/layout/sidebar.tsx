@@ -37,6 +37,7 @@ export const ADMIN_NAV: NavItem[] = [
 export const EMPLOYEE_NAV: NavItem[] = [
   { href: "/my-tasks", label: "My Dashboard", icon: LayoutDashboard },
   { href: "/tasks", label: "My Tasks", icon: ListTodo },
+  { href: "/reports", label: "Reports", icon: FileBarChart2 },
 ];
 
 export function Sidebar({ role, canViewExpenses }: { role: Role; canViewExpenses?: boolean }) {

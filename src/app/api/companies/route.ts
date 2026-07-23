@@ -5,7 +5,25 @@ import { companySchema } from "@/lib/validations/company";
 
 export async function GET() {
   try {
-    await requireSession(["ADMIN"]);
+    const session = await requireSession();
+
+    if (session.role !== "ADMIN") {
+      // Employees only see companies they're actually mapped to (primary + additional) — e.g. so
+      // the "add my own task" form's Company dropdown can't leak the whole org's company list.
+      const employee = session.employeeId
+        ? await prisma.employee.findUnique({ where: { id: session.employeeId }, select: { companyId: true, additionalCompanyIds: true } })
+        : null;
+      if (!employee) return NextResponse.json({ companies: [] });
+
+      const allowedIds = Array.from(new Set([employee.companyId, ...employee.additionalCompanyIds]));
+      const companies = await prisma.company.findMany({
+        where: { id: { in: allowedIds } },
+        orderBy: { name: "asc" },
+        include: { _count: { select: { departments: true, employees: true, tasks: true } } },
+      });
+      return NextResponse.json({ companies });
+    }
+
     const companies = await prisma.company.findMany({
       orderBy: { name: "asc" },
       include: { _count: { select: { departments: true, employees: true, tasks: true } } },

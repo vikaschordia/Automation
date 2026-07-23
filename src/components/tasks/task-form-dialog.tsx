@@ -10,6 +10,7 @@ import { useCreateTask, useUpdateTask, useTaskCategories, type TaskRow } from "@
 import { useCompanies } from "@/hooks/use-companies";
 import { useDepartments } from "@/hooks/use-departments";
 import { useEmployees } from "@/hooks/use-employees";
+import { useSession } from "@/components/layout/session-provider";
 import { TASK_PRIORITIES, TASK_STATUSES, PRIORITY_META, STATUS_META } from "@/lib/constants";
 import { toDateInputValue } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,11 @@ export function TaskFormDialog({
   defaultAssignedToId?: string;
 }) {
   const isEdit = !!task;
+  const { role, employeeId } = useSession();
+  const isAdmin = role === "ADMIN";
+  // Employees can only ever create a task for themselves — editing (task=set) is admin-only
+  // today, so this only actually matters on the create path, but it's computed either way.
+  const selfAssignedToId = isAdmin ? (defaultAssignedToId ?? "") : (employeeId ?? "");
   const { data: companies } = useCompanies();
   const { data: categories } = useTaskCategories();
   const createMutation = useCreateTask();
@@ -61,7 +67,7 @@ export function TaskFormDialog({
     defaultValues: {
       title: "",
       description: "",
-      assignedToId: defaultAssignedToId ?? "",
+      assignedToId: selfAssignedToId,
       companyId: "",
       departmentId: "",
       categoryId: null,
@@ -79,7 +85,7 @@ export function TaskFormDialog({
 
   const companyId = watch("companyId");
   const { data: departments } = useDepartments(companyId || undefined);
-  const { data: employees } = useEmployees(companyId ? { companyId } : undefined);
+  const { data: employees } = useEmployees(companyId ? { companyId } : undefined, { enabled: isAdmin });
 
   useEffect(() => {
     if (!open) return;
@@ -106,7 +112,7 @@ export function TaskFormDialog({
       reset({
         title: "",
         description: "",
-        assignedToId: defaultAssignedToId ?? "",
+        assignedToId: selfAssignedToId,
         companyId: "",
         departmentId: "",
         categoryId: null,
@@ -122,7 +128,7 @@ export function TaskFormDialog({
       });
       setTagsText("");
     }
-  }, [open, task, defaultAssignedToId, reset]);
+  }, [open, task, selfAssignedToId, reset]);
 
   const activeEmployees = useMemo(() => (employees ?? []).filter((e) => e.status === "ACTIVE"), [employees]);
 
@@ -144,9 +150,13 @@ export function TaskFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{isEdit ? `Edit ${task?.taskNumber}` : "Assign new task"}</DialogTitle>
+          <DialogTitle>{isEdit ? `Edit ${task?.taskNumber}` : isAdmin ? "Assign new task" : "Add task"}</DialogTitle>
           <DialogDescription>
-            {isEdit ? "Update task details." : "Assign a task to an employee with a priority and due date."}
+            {isEdit
+              ? "Update task details."
+              : isAdmin
+                ? "Assign a task to an employee with a priority and due date."
+                : "Add your own task with a priority and due date."}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] pr-4">
@@ -170,7 +180,9 @@ export function TaskFormDialog({
                   onValueChange={(v) => {
                     setValue("companyId", v, { shouldValidate: true });
                     setValue("departmentId", "");
-                    setValue("assignedToId", "");
+                    // Employees create tasks for themselves only — their assignedToId never
+                    // changes with the company, unlike an admin picking who to assign it to.
+                    if (isAdmin) setValue("assignedToId", "");
                   }}
                 >
                   <SelectTrigger className="w-full">
@@ -208,71 +220,80 @@ export function TaskFormDialog({
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label>Assign to</Label>
-              <Select
-                value={watch("assignedToId")}
-                onValueChange={(v) => {
-                  setValue("assignedToId", v, { shouldValidate: true });
-                  // Keep the primary assignee out of the "also assign to" list if it was checked.
-                  setValue(
-                    "additionalAssignedToIds",
-                    (watch("additionalAssignedToIds") ?? []).filter((id) => id !== v),
-                  );
-                }}
-                disabled={!companyId}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select employee" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeEmployees.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.name} · {e.designation}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.assignedToId && <p className="text-xs text-destructive">{errors.assignedToId.message}</p>}
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label>Also assign to (optional)</Label>
-              <p className="text-xs text-muted-foreground">
-                {isEdit
-                  ? "Creates an independent, linked copy of this task for each employee checked below. Anyone already linked to this task is skipped automatically."
-                  : "Creates an independent, linked copy of this task for each employee checked below — each tracks their own status/progress separately."}
-              </p>
-              <div className="flex max-h-40 flex-col gap-1.5 overflow-y-auto rounded-md border p-2.5">
-                {!companyId && <p className="py-1 text-center text-xs text-muted-foreground">Select a company first.</p>}
-                {companyId && activeEmployees.filter((e) => e.id !== watch("assignedToId")).length === 0 && (
-                  <p className="py-1 text-center text-xs text-muted-foreground">No other employees in this company.</p>
-                )}
-                {activeEmployees
-                  .filter((e) => e.id !== watch("assignedToId"))
-                  .map((e) => {
-                    const selected = watch("additionalAssignedToIds") ?? [];
-                    const checked = selected.includes(e.id);
-                    return (
-                      <div key={e.id} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`additional-employee-${e.id}`}
-                          checked={checked}
-                          onCheckedChange={(v) =>
-                            setValue(
-                              "additionalAssignedToIds",
-                              v ? [...selected, e.id] : selected.filter((id) => id !== e.id),
-                            )
-                          }
-                        />
-                        <Label htmlFor={`additional-employee-${e.id}`} className="cursor-pointer text-sm font-normal">
-                          {e.name} · {e.designation}
-                        </Label>
-                      </div>
+            {isAdmin ? (
+              <div className="flex flex-col gap-1.5">
+                <Label>Assign to</Label>
+                <Select
+                  value={watch("assignedToId")}
+                  onValueChange={(v) => {
+                    setValue("assignedToId", v, { shouldValidate: true });
+                    // Keep the primary assignee out of the "also assign to" list if it was checked.
+                    setValue(
+                      "additionalAssignedToIds",
+                      (watch("additionalAssignedToIds") ?? []).filter((id) => id !== v),
                     );
-                  })}
+                  }}
+                  disabled={!companyId}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeEmployees.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.name} · {e.designation}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.assignedToId && <p className="text-xs text-destructive">{errors.assignedToId.message}</p>}
               </div>
-            </div>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <Label>Assigned to</Label>
+                <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">You</p>
+              </div>
+            )}
+
+            {isAdmin && (
+              <div className="flex flex-col gap-1.5">
+                <Label>Also assign to (optional)</Label>
+                <p className="text-xs text-muted-foreground">
+                  {isEdit
+                    ? "Creates an independent, linked copy of this task for each employee checked below. Anyone already linked to this task is skipped automatically."
+                    : "Creates an independent, linked copy of this task for each employee checked below — each tracks their own status/progress separately."}
+                </p>
+                <div className="flex max-h-40 flex-col gap-1.5 overflow-y-auto rounded-md border p-2.5">
+                  {!companyId && <p className="py-1 text-center text-xs text-muted-foreground">Select a company first.</p>}
+                  {companyId && activeEmployees.filter((e) => e.id !== watch("assignedToId")).length === 0 && (
+                    <p className="py-1 text-center text-xs text-muted-foreground">No other employees in this company.</p>
+                  )}
+                  {activeEmployees
+                    .filter((e) => e.id !== watch("assignedToId"))
+                    .map((e) => {
+                      const selected = watch("additionalAssignedToIds") ?? [];
+                      const checked = selected.includes(e.id);
+                      return (
+                        <div key={e.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`additional-employee-${e.id}`}
+                            checked={checked}
+                            onCheckedChange={(v) =>
+                              setValue(
+                                "additionalAssignedToIds",
+                                v ? [...selected, e.id] : selected.filter((id) => id !== e.id),
+                              )
+                            }
+                          />
+                          <Label htmlFor={`additional-employee-${e.id}`} className="cursor-pointer text-sm font-normal">
+                            {e.name} · {e.designation}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
@@ -410,7 +431,7 @@ export function TaskFormDialog({
           </Button>
           <Button type="submit" form="task-form" disabled={pending}>
             {pending && <Loader2 className="size-4 animate-spin" />}
-            {isEdit ? "Save changes" : "Assign task"}
+            {isEdit ? "Save changes" : isAdmin ? "Assign task" : "Add task"}
           </Button>
         </DialogFooter>
       </DialogContent>

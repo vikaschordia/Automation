@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 // Next.js 16 renamed middleware.ts -> proxy.ts (function `proxy`). Runs in the Node.js
 // runtime, which is what we need anyway since it shares code with the route handlers.
-const ADMIN_ONLY_PREFIXES = ["/dashboard", "/companies", "/departments", "/employees", "/categories", "/reports"];
+const ADMIN_ONLY_PREFIXES = ["/dashboard", "/companies", "/departments", "/employees", "/categories"];
 // Admin-only by default, but an individual employee can be opted in (Employee.canViewExpenses) —
 // checked separately below instead of via the blanket admin-only list.
 const CONDITIONAL_PREFIXES = ["/expenses"];

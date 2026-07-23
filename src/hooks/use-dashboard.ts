@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { TaskPriority, TaskStatus } from "@/lib/constants";
+import type { TaskPriority } from "@/lib/constants";
 
 export interface AdminDashboardData {
   stats: {
@@ -38,25 +38,6 @@ export interface AlertTask {
   assignedToName: string;
 }
 
-export interface EmployeeTaskRow {
-  id: string;
-  taskNumber: string;
-  title: string;
-  priority: TaskPriority;
-  status: TaskStatus;
-  dueDate: string;
-  progressPercent: number;
-}
-
-export interface EmployeeDashboardData {
-  stats: { total: number; completed: number; pending: number; completionPercent: number; overdue: number; urgent: number };
-  todaysTasks: EmployeeTaskRow[];
-  pendingTasks: EmployeeTaskRow[];
-  urgentTasks: EmployeeTaskRow[];
-  upcomingTasks: EmployeeTaskRow[];
-  recentActivity: { id: string; action: string; field: string | null; createdAt: string; taskId: string; taskTitle: string; changedByEmail: string }[];
-}
-
 export function useAdminDashboard() {
   return useQuery<AdminDashboardData>({
     queryKey: ["dashboard", "admin"],
@@ -69,8 +50,10 @@ export function useAdminDashboard() {
   });
 }
 
+/** Same shape as useAdminDashboard — "My Dashboard" mirrors the admin dashboard, scoped server-side
+ *  to only this employee's own tasks (see getDashboardData). */
 export function useEmployeeDashboard() {
-  return useQuery<EmployeeDashboardData>({
+  return useQuery<AdminDashboardData>({
     queryKey: ["dashboard", "employee"],
     queryFn: async () => {
       const res = await fetch("/api/dashboard/employee");

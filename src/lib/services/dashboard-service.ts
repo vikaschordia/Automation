@@ -21,9 +21,14 @@ function monthBuckets(count: number): { key: string; label: string; start: Date;
   return buckets;
 }
 
-export async function getAdminDashboardData() {
+/**
+ * Powers both the admin Dashboard (unfiltered) and an employee's own "My Dashboard" (scoped to
+ * their assignedToId) — same stats/charts/alerts shape either way, so an employee sees exactly
+ * what an admin sees, just computed only from tasks that pertain to them.
+ */
+export async function getDashboardData(filter?: { employeeId?: string }) {
   const tasks = await prisma.task.findMany({
-    where: { deletedAt: null },
+    where: { deletedAt: null, ...(filter?.employeeId ? { assignedToId: filter.employeeId } : {}) },
     select: {
       id: true,
       taskNumber: true,
@@ -127,59 +132,4 @@ function groupCount<T>(items: T[], keyFn: (item: T) => string): { name: string; 
     map.set(key, (map.get(key) ?? 0) + 1);
   }
   return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
-}
-
-export async function getEmployeeDashboardData(employeeId: string) {
-  const tasks = await prisma.task.findMany({
-    where: { deletedAt: null, assignedToId: employeeId },
-    orderBy: { dueDate: "asc" },
-  });
-
-  const openTasks = tasks.filter((t) => OPEN_TASK_STATUSES.includes(t.status));
-  const total = tasks.length;
-  const completed = tasks.filter((t) => t.status === "COMPLETED").length;
-
-  const toRow = (t: (typeof tasks)[number]) => ({
-    id: t.id,
-    taskNumber: formatTaskNumber(t.taskNumber),
-    title: t.title,
-    priority: t.priority,
-    status: t.status,
-    dueDate: t.dueDate,
-    progressPercent: t.progressPercent,
-  });
-
-  const history = await prisma.taskHistory.findMany({
-    where: { task: { assignedToId: employeeId, deletedAt: null } },
-    orderBy: { createdAt: "desc" },
-    take: 8,
-    include: { task: { select: { id: true, title: true } }, changedBy: { select: { email: true } } },
-  });
-
-  return {
-    stats: {
-      total,
-      completed,
-      pending: tasks.filter((t) => t.status === "PENDING").length,
-      completionPercent: total === 0 ? 0 : Math.round((completed / total) * 100),
-      overdue: openTasks.filter((t) => isOverdue(t.dueDate, null)).length,
-      urgent: openTasks.filter((t) => t.priority === "P1_URGENT").length,
-    },
-    todaysTasks: openTasks.filter((t) => isDueToday(t.dueDate)).map(toRow),
-    pendingTasks: tasks.filter((t) => t.status === "PENDING").slice(0, 8).map(toRow),
-    urgentTasks: openTasks.filter((t) => t.priority === "P1_URGENT").slice(0, 8).map(toRow),
-    upcomingTasks: openTasks
-      .filter((t) => !isOverdue(t.dueDate, null) && !isDueToday(t.dueDate))
-      .slice(0, 8)
-      .map(toRow),
-    recentActivity: history.map((h) => ({
-      id: h.id,
-      action: h.action,
-      field: h.field,
-      createdAt: h.createdAt,
-      taskId: h.task.id,
-      taskTitle: h.task.title,
-      changedByEmail: h.changedBy.email,
-    })),
-  };
 }

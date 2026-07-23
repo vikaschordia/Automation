@@ -76,16 +76,14 @@ function TasksPageInner() {
                 <Download className="size-4" /> Export
               </a>
             </Button>
-            {role === "ADMIN" && (
-              <Button
-                onClick={() => {
-                  setEditing(null);
-                  setFormOpen(true);
-                }}
-              >
-                <Plus className="size-4" /> Assign task
-              </Button>
-            )}
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
+            >
+              <Plus className="size-4" /> {role === "ADMIN" ? "Assign task" : "Add task"}
+            </Button>
           </div>
         }
       />
@@ -122,23 +120,22 @@ function TasksPageInner() {
         />
       )}
 
+      <TaskFormDialog open={formOpen} onOpenChange={setFormOpen} task={editing} />
+
       {role === "ADMIN" && (
-        <>
-          <TaskFormDialog open={formOpen} onOpenChange={setFormOpen} task={editing} />
-          <ConfirmDialog
-            open={!!deleting}
-            onOpenChange={(o) => !o && setDeleting(null)}
-            title={`Delete ${deleting?.taskNumber}?`}
-            description="This moves the task to the deleted list. This can't be undone from the UI yet."
-            confirmLabel="Delete"
-            loading={deleteMutation.isPending}
-            onConfirm={async () => {
-              if (!deleting) return;
-              await deleteMutation.mutateAsync(deleting.id);
-              setDeleting(null);
-            }}
-          />
-        </>
+        <ConfirmDialog
+          open={!!deleting}
+          onOpenChange={(o) => !o && setDeleting(null)}
+          title={`Delete ${deleting?.taskNumber}?`}
+          description="This moves the task to the deleted list. This can't be undone from the UI yet."
+          confirmLabel="Delete"
+          loading={deleteMutation.isPending}
+          onConfirm={async () => {
+            if (!deleting) return;
+            await deleteMutation.mutateAsync(deleting.id);
+            setDeleting(null);
+          }}
+        />
       )}
     </div>
   );

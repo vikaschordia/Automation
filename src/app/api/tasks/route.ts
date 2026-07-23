@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse } from "@/lib/session";
+import { assertEmployeeTaskCreateAllowed } from "@/lib/rbac";
 import { taskCreateSchema } from "@/lib/validations/task";
 import { buildTaskOrderBy, buildTaskWhere, createTask, serializeTask, taskInclude } from "@/lib/services/task-service";
 
@@ -41,12 +42,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await requireSession(["ADMIN"]);
+    const session = await requireSession();
     const body = await request.json().catch(() => null);
     const parsed = taskCreateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
     }
+    await assertEmployeeTaskCreateAllowed(session, parsed.data);
     const { task, linkedTasks } = await createTask(parsed.data, session);
     return NextResponse.json({ task, linkedTasks }, { status: 201 });
   } catch (error) {

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse } from "@/lib/session";
 import { bulkUpdateSchema, bulkDeleteSchema } from "@/lib/validations/task";
 import { bulkSoftDeleteTasks } from "@/lib/services/task-service";
+import { logAudit } from "@/lib/services/audit-service";
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -40,6 +41,12 @@ export async function PATCH(request: NextRequest) {
       });
     });
 
+    await logAudit({
+      session,
+      action: "UPDATE",
+      entityType: "TASK",
+      summary: `Bulk-updated ${taskIds.length} task(s): ${JSON.stringify(data)}`,
+    });
     return NextResponse.json({ ok: true, updated: taskIds.length });
   } catch (error) {
     return apiErrorResponse(error);
@@ -56,6 +63,12 @@ export async function DELETE(request: NextRequest) {
     }
 
     const deleted = await bulkSoftDeleteTasks(parsed.data.taskIds, session);
+    await logAudit({
+      session,
+      action: "DELETE",
+      entityType: "TASK",
+      summary: `Bulk-deleted ${deleted} task(s)`,
+    });
     return NextResponse.json({ ok: true, deleted });
   } catch (error) {
     return apiErrorResponse(error);

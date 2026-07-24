@@ -1,12 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  TASK_PRIORITIES,
-  TASK_STATUSES,
-  PRIORITY_META,
-  STATUS_META,
-  EMPLOYEE_EDITABLE_TASK_FIELDS,
-  ADMIN_ONLY_TASK_FIELDS,
-} from "@/lib/constants";
+import { TASK_PRIORITIES, TASK_STATUSES, PRIORITY_META, STATUS_META } from "@/lib/constants";
 
 // A "contract" test: every place that renders a priority/status badge or an Excel cell looks
 // values up by key with no fallback, so a renamed/added enum value with no matching metadata
@@ -25,12 +18,5 @@ describe("priority/status metadata is complete", () => {
       expect(STATUS_META[status]).toBeDefined();
       expect(STATUS_META[status].label).toBeTruthy();
     }
-  });
-});
-
-describe("employee vs admin task field lists", () => {
-  it("never lists the same field as both employee-editable and admin-only", () => {
-    const overlap = EMPLOYEE_EDITABLE_TASK_FIELDS.filter((f) => (ADMIN_ONLY_TASK_FIELDS as readonly string[]).includes(f));
-    expect(overlap).toEqual([]);
   });
 });

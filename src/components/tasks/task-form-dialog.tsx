@@ -45,8 +45,8 @@ export function TaskFormDialog({
   const isEdit = !!task;
   const { role, employeeId } = useSession();
   const isAdmin = role === "ADMIN";
-  // Employees can only ever create a task for themselves — editing (task=set) is admin-only
-  // today, so this only actually matters on the create path, but it's computed either way.
+  // Employees can only ever create/edit a task assigned to themselves — assignedToId never
+  // changes for them on either path (see the isAdmin-gated "Assign to" section below).
   const selfAssignedToId = isAdmin ? (defaultAssignedToId ?? "") : (employeeId ?? "");
   const { data: companies } = useCompanies();
   const { data: categories } = useTaskCategories();

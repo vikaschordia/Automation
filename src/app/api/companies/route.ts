@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse } from "@/lib/session";
 import { companySchema } from "@/lib/validations/company";
+import { logAudit } from "@/lib/services/audit-service";
 
 export async function GET() {
   try {
@@ -36,7 +37,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireSession(["ADMIN"]);
+    const session = await requireSession(["ADMIN"]);
     const body = await request.json().catch(() => null);
     const parsed = companySchema.safeParse(body);
     if (!parsed.success) {
@@ -56,6 +57,7 @@ export async function POST(request: NextRequest) {
         isActive: parsed.data.isActive ?? true,
       },
     });
+    await logAudit({ session, action: "CREATE", entityType: "COMPANY", entityId: company.id, summary: `Created company "${company.name}"` });
     return NextResponse.json({ company }, { status: 201 });
   } catch (error) {
     return apiErrorResponse(error);

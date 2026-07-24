@@ -17,6 +17,7 @@ export const employeeSchema = z.object({
   additionalCompanyIds: z.array(z.string()).max(50).optional(),
   managerId: z.string().optional().nullable(),
   canViewExpenses: z.boolean().optional(),
+  canViewUnbilledEntries: z.boolean().optional(),
   createLogin: z.boolean().optional(),
 });
 

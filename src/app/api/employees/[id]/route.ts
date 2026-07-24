@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse, ApiError } from "@/lib/session";
 import { employeeSchema } from "@/lib/validations/employee";
+import { logAudit } from "@/lib/services/audit-service";
 
 type Params = Promise<{ id: string }>;
 
@@ -29,7 +30,7 @@ export async function GET(_request: NextRequest, { params }: { params: Params })
 
 export async function PATCH(request: NextRequest, { params }: { params: Params }) {
   try {
-    await requireSession(["ADMIN"]);
+    const session = await requireSession(["ADMIN"]);
     const { id } = await params;
     const body = await request.json().catch(() => null);
     const parsed = employeeSchema.partial().omit({ createLogin: true }).safeParse(body);
@@ -70,6 +71,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
       return updated;
     });
 
+    await logAudit({
+      session,
+      action: "UPDATE",
+      entityType: "EMPLOYEE",
+      entityId: id,
+      summary: `Updated employee "${employee.name}" (${Object.keys(data).join(", ")})`,
+    });
     return NextResponse.json({ employee });
   } catch (error) {
     return apiErrorResponse(error);
@@ -78,11 +86,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
 
 export async function DELETE(_request: NextRequest, { params }: { params: Params }) {
   try {
-    await requireSession(["ADMIN"]);
+    const session = await requireSession(["ADMIN"]);
     const { id } = await params;
     const employee = await prisma.employee.findUnique({
       where: { id },
       select: {
+        name: true,
         // Soft-deleted tasks still exist as rows (deletedAt is just a flag) and still reference
         // this employee via the required assignedToId FK, so an unfiltered count here would keep
         // blocking deletion even after the user has "deleted" every one of their tasks in the UI.
@@ -119,6 +128,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Params
       throw err;
     }
 
+    await logAudit({ session, action: "DELETE", entityType: "EMPLOYEE", entityId: id, summary: `Deleted employee "${employee.name}"` });
     return NextResponse.json({ ok: true });
   } catch (error) {
     return apiErrorResponse(error);

@@ -101,27 +101,13 @@ export const STATUS_META: Record<TaskStatus, { label: string; badgeClass: string
   },
 };
 
-export const EMPLOYEE_EDITABLE_TASK_FIELDS = [
-  "status",
-  "progressPercent",
-  "remarks",
-  "completedDate",
-  "actualHours",
-] as const;
-
-export const ADMIN_ONLY_TASK_FIELDS = [
-  "title",
-  "description",
-  "assignedToId",
-  "priority",
-  "assignedDate",
-  "dueDate",
-  "departmentId",
-  "companyId",
-  "categoryId",
-  "estimatedHours",
-  "tags",
-] as const;
+/**
+ * Employees can fully edit their own tasks now — the only fields still admin-only are the ones
+ * that move a task to/from someone else (reassigning it away from yourself, or fanning it out to
+ * additional employees). Everything else (title, description, priority, dates, etc.) is open to
+ * whoever owns the task, enforced via assertOwnsTask + assertTaskFieldsEditable in rbac.ts.
+ */
+export const EMPLOYEE_RESTRICTED_TASK_FIELDS = ["assignedToId", "additionalAssignedToIds"] as const;
 
 export const ACCESS_TOKEN_COOKIE = "task_tracker_at";
 export const REFRESH_TOKEN_COOKIE = "task_tracker_rt";
@@ -162,6 +148,36 @@ export const EXPENSE_STATUS_META: Record<ExpenseStatus, { label: string; badgeCl
       "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-900",
   },
 };
+
+export const UNBILLED_ENTRY_STATUSES = ["PENDING", "DONE"] as const;
+export type UnbilledEntryStatus = (typeof UNBILLED_ENTRY_STATUSES)[number];
+
+export const UNBILLED_ENTRY_STATUS_META: Record<UnbilledEntryStatus, { label: string; badgeClass: string }> = {
+  PENDING: {
+    label: "Pending",
+    badgeClass: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
+  },
+  DONE: {
+    label: "Done",
+    badgeClass:
+      "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-900",
+  },
+};
+
+export const AUDIT_ACTIONS = ["LOGIN", "LOGIN_FAILED", "LOGOUT", "CREATE", "UPDATE", "DELETE"] as const;
+export type AuditAction = (typeof AUDIT_ACTIONS)[number];
+
+export const AUDIT_ENTITY_TYPES = [
+  "AUTH",
+  "TASK",
+  "EXPENSE",
+  "UNBILLED_ENTRY",
+  "EMPLOYEE",
+  "COMPANY",
+  "DEPARTMENT",
+  "CATEGORY",
+] as const;
+export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
 
 /** Columns the Employee Performance report allows sorting on — see getEmployeePerformanceReport. */
 export const EMPLOYEE_PERFORMANCE_SORT_FIELDS = [

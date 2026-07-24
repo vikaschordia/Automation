@@ -4,6 +4,7 @@ import { requireSession, apiErrorResponse } from "@/lib/session";
 import { assertEmployeeTaskCreateAllowed } from "@/lib/rbac";
 import { taskCreateSchema } from "@/lib/validations/task";
 import { buildTaskOrderBy, buildTaskWhere, createTask, serializeTask, taskInclude } from "@/lib/services/task-service";
+import { logAudit } from "@/lib/services/audit-service";
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,6 +51,13 @@ export async function POST(request: NextRequest) {
     }
     await assertEmployeeTaskCreateAllowed(session, parsed.data);
     const { task, linkedTasks } = await createTask(parsed.data, session);
+    await logAudit({
+      session,
+      action: "CREATE",
+      entityType: "TASK",
+      entityId: task.id,
+      summary: `Created task ${task.taskNumber}: "${task.title}"`,
+    });
     return NextResponse.json({ task, linkedTasks }, { status: 201 });
   } catch (error) {
     return apiErrorResponse(error);

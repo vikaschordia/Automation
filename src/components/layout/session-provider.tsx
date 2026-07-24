@@ -4,11 +4,13 @@ import { createContext, useContext } from "react";
 import type { Role } from "@/lib/constants";
 
 export interface ClientSession {
+  userId: string;
   name: string;
   email: string;
   role: Role;
   employeeId: string | null;
   canViewExpenses: boolean;
+  canViewUnbilledEntries: boolean;
 }
 
 const SessionContext = createContext<ClientSession | null>(null);

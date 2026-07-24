@@ -162,25 +162,23 @@ export function TaskTable({
         size: 220,
         cell: (info) => <EditableRemarksCell taskId={info.row.original.id} remarks={info.getValue()} />,
       }),
-      ...(role === "ADMIN"
-        ? [
-            columnHelper.display({
-              id: "actions",
-              size: 90,
-              header: "",
-              cell: ({ row }) => (
-                <div className="flex justify-end gap-1">
-                  <Button variant="ghost" size="icon" className="size-7" onClick={() => onEdit(row.original)}>
-                    <Pencil className="size-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="size-7 text-destructive" onClick={() => onDelete(row.original)}>
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </div>
-              ),
-            }),
-          ]
-        : []),
+      columnHelper.display({
+        id: "actions",
+        size: role === "ADMIN" ? 90 : 50,
+        header: "",
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-1">
+            <Button variant="ghost" size="icon" className="size-7" onClick={() => onEdit(row.original)}>
+              <Pencil className="size-3.5" />
+            </Button>
+            {role === "ADMIN" && (
+              <Button variant="ghost" size="icon" className="size-7 text-destructive" onClick={() => onDelete(row.original)}>
+                <Trash2 className="size-3.5" />
+              </Button>
+            )}
+          </div>
+        ),
+      }),
     ],
     [role, onEdit, onDelete],
   );

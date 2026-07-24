@@ -13,6 +13,8 @@ import {
   ListTodo,
   Tag,
   Wallet,
+  FileClock,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/constants";
@@ -32,6 +34,8 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/categories", label: "Categories", icon: Tag },
   { href: "/reports", label: "Reports", icon: FileBarChart2 },
   { href: "/expenses", label: "Monthly Expenses", icon: Wallet },
+  { href: "/unbilled-entries", label: "Monthly Unbilled Entries", icon: FileClock },
+  { href: "/audit-log", label: "Audit Trail", icon: History },
 ];
 
 export const EMPLOYEE_NAV: NavItem[] = [
@@ -40,14 +44,26 @@ export const EMPLOYEE_NAV: NavItem[] = [
   { href: "/reports", label: "Reports", icon: FileBarChart2 },
 ];
 
-export function Sidebar({ role, canViewExpenses }: { role: Role; canViewExpenses?: boolean }) {
+export function Sidebar({
+  role,
+  canViewExpenses,
+  canViewUnbilledEntries,
+}: {
+  role: Role;
+  canViewExpenses?: boolean;
+  canViewUnbilledEntries?: boolean;
+}) {
   const pathname = usePathname();
   const items =
     role === "ADMIN"
       ? ADMIN_NAV
-      : canViewExpenses
-        ? [...EMPLOYEE_NAV, { href: "/expenses", label: "Monthly Expenses", icon: Wallet }]
-        : EMPLOYEE_NAV;
+      : [
+          ...EMPLOYEE_NAV,
+          ...(canViewExpenses ? [{ href: "/expenses", label: "Monthly Expenses", icon: Wallet }] : []),
+          ...(canViewUnbilledEntries
+            ? [{ href: "/unbilled-entries", label: "Monthly Unbilled Entries", icon: FileClock }]
+            : []),
+        ];
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">

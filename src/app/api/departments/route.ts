@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse } from "@/lib/session";
 import { departmentSchema } from "@/lib/validations/department";
+import { logAudit } from "@/lib/services/audit-service";
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireSession(["ADMIN"]);
+    const session = await requireSession(["ADMIN"]);
     const body = await request.json().catch(() => null);
     const parsed = departmentSchema.safeParse(body);
     if (!parsed.success) {
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
         isActive: parsed.data.isActive ?? true,
       },
     });
+    await logAudit({ session, action: "CREATE", entityType: "DEPARTMENT", entityId: department.id, summary: `Created department "${department.name}"` });
     return NextResponse.json({ department }, { status: 201 });
   } catch (error) {
     return apiErrorResponse(error);

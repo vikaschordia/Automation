@@ -70,16 +70,16 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           </div>
           <h1 className="text-xl font-semibold tracking-tight">{task.title}</h1>
         </div>
-        {role === "ADMIN" && (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setEditOpen(true)}>
-              <Pencil className="size-4" /> Edit
-            </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setEditOpen(true)}>
+            <Pencil className="size-4" /> Edit
+          </Button>
+          {role === "ADMIN" && (
             <Button variant="outline" className="text-destructive" onClick={() => setDeleteOpen(true)}>
               <Trash2 className="size-4" /> Delete
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -285,22 +285,20 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         }
       />
 
+      <TaskFormDialog open={editOpen} onOpenChange={setEditOpen} task={task} />
       {role === "ADMIN" && (
-        <>
-          <TaskFormDialog open={editOpen} onOpenChange={setEditOpen} task={task} />
-          <ConfirmDialog
-            open={deleteOpen}
-            onOpenChange={setDeleteOpen}
-            title={`Delete ${task.taskNumber}?`}
-            description="This moves the task to the deleted list."
-            confirmLabel="Delete"
-            loading={deleteMutation.isPending}
-            onConfirm={async () => {
-              await deleteMutation.mutateAsync(task.id);
-              router.push("/tasks");
-            }}
-          />
-        </>
+        <ConfirmDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          title={`Delete ${task.taskNumber}?`}
+          description="This moves the task to the deleted list."
+          confirmLabel="Delete"
+          loading={deleteMutation.isPending}
+          onConfirm={async () => {
+            await deleteMutation.mutateAsync(task.id);
+            router.push("/tasks");
+          }}
+        />
       )}
     </div>
   );

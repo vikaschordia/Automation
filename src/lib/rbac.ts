@@ -1,4 +1,4 @@
-import { ADMIN_ONLY_TASK_FIELDS, EMPLOYEE_EDITABLE_TASK_FIELDS, type Role } from "@/lib/constants";
+import { EMPLOYEE_RESTRICTED_TASK_FIELDS, type Role } from "@/lib/constants";
 import { ApiError } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import type { SessionPayload } from "@/lib/auth";
@@ -11,20 +11,19 @@ export function assertAdmin(role: Role): void {
 }
 
 /**
- * Employees may only send the fields listed in EMPLOYEE_EDITABLE_TASK_FIELDS when updating a
- * task. Admins may send any field. Silently rejecting instead of silently dropping the field
- * avoids a client believing an edit succeeded when the server ignored it.
+ * Employees can now fully edit their own tasks (see assertOwnsTask) — the only fields still
+ * off-limits are the ones listed in EMPLOYEE_RESTRICTED_TASK_FIELDS (reassigning the task away
+ * from yourself, or fanning it out to additional employees). Admins may send any field. Silently
+ * rejecting instead of silently dropping the field avoids a client believing an edit succeeded
+ * when the server ignored it.
  */
 export function assertTaskFieldsEditable(role: Role, patchKeys: string[]): void {
   if (role === "ADMIN") return;
-  const disallowed = patchKeys.filter(
-    (key) => !(EMPLOYEE_EDITABLE_TASK_FIELDS as readonly string[]).includes(key),
+  const disallowed = patchKeys.filter((key) =>
+    (EMPLOYEE_RESTRICTED_TASK_FIELDS as readonly string[]).includes(key),
   );
   if (disallowed.length > 0) {
-    throw new ApiError(
-      403,
-      `Employees cannot edit: ${disallowed.join(", ")}. Editable fields are: ${EMPLOYEE_EDITABLE_TASK_FIELDS.join(", ")}`,
-    );
+    throw new ApiError(403, `Employees cannot edit: ${disallowed.join(", ")}.`);
   }
 }
 
@@ -34,8 +33,6 @@ export function assertOwnsTask(role: Role, sessionEmployeeId: string | null, tas
     throw new ApiError(403, "You can only view or update your own tasks");
   }
 }
-
-export const adminOnlyTaskFields = ADMIN_ONLY_TASK_FIELDS;
 
 /**
  * Employees can now add their own tasks (all fields open, same create form as admin) — but only
@@ -81,5 +78,19 @@ export async function assertExpenseAccess(session: SessionPayload): Promise<void
     : null;
   if (!employee?.canViewExpenses) {
     throw new ApiError(403, "You don't have access to Monthly Expenses");
+  }
+}
+
+/**
+ * Same pattern as assertExpenseAccess above, but for Monthly Unbilled Entries
+ * (Employee.canViewUnbilledEntries) — an independent opt-in, not tied to canViewExpenses.
+ */
+export async function assertUnbilledEntryAccess(session: SessionPayload): Promise<void> {
+  if (session.role === "ADMIN") return;
+  const employee = session.employeeId
+    ? await prisma.employee.findUnique({ where: { id: session.employeeId }, select: { canViewUnbilledEntries: true } })
+    : null;
+  if (!employee?.canViewUnbilledEntries) {
+    throw new ApiError(403, "You don't have access to Monthly Unbilled Entries");
   }
 }

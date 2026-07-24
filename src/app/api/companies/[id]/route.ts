@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse, ApiError } from "@/lib/session";
 import { companySchema } from "@/lib/validations/company";
+import { logAudit } from "@/lib/services/audit-service";
 
 type Params = Promise<{ id: string }>;
 
 export async function PATCH(request: NextRequest, { params }: { params: Params }) {
   try {
-    await requireSession(["ADMIN"]);
+    const session = await requireSession(["ADMIN"]);
     const { id } = await params;
     const body = await request.json().catch(() => null);
     const parsed = companySchema.partial().safeParse(body);
@@ -29,6 +30,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
         address: parsed.data.address === "" ? null : parsed.data.address,
       },
     });
+    await logAudit({ session, action: "UPDATE", entityType: "COMPANY", entityId: id, summary: `Updated company "${company.name}"` });
     return NextResponse.json({ company });
   } catch (error) {
     return apiErrorResponse(error);
@@ -37,11 +39,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
 
 export async function DELETE(_request: NextRequest, { params }: { params: Params }) {
   try {
-    await requireSession(["ADMIN"]);
+    const session = await requireSession(["ADMIN"]);
     const { id } = await params;
     const counts = await prisma.company.findUnique({
       where: { id },
-      select: { _count: { select: { departments: true, employees: true, tasks: true } } },
+      select: { name: true, _count: { select: { departments: true, employees: true, tasks: true } } },
     });
     if (!counts) throw new ApiError(404, "Company not found");
     if (counts._count.departments > 0 || counts._count.employees > 0 || counts._count.tasks > 0) {
@@ -51,6 +53,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Params
       );
     }
     await prisma.company.delete({ where: { id } });
+    await logAudit({ session, action: "DELETE", entityType: "COMPANY", entityId: id, summary: `Deleted company "${counts.name}"` });
     return NextResponse.json({ ok: true });
   } catch (error) {
     return apiErrorResponse(error);

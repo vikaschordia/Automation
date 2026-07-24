@@ -65,6 +65,7 @@ export function EmployeeFormDialog({
       additionalCompanyIds: [],
       managerId: null,
       canViewExpenses: false,
+      canViewUnbilledEntries: false,
       createLogin: true,
     },
   });
@@ -94,6 +95,7 @@ export function EmployeeFormDialog({
               additionalCompanyIds: employee.additionalCompanies.map((c) => c.id),
               managerId: employee.managerId,
               canViewExpenses: employee.canViewExpenses,
+              canViewUnbilledEntries: employee.canViewUnbilledEntries,
               createLogin: false,
             }
           : {
@@ -109,6 +111,7 @@ export function EmployeeFormDialog({
               additionalCompanyIds: [],
               managerId: null,
               canViewExpenses: false,
+              canViewUnbilledEntries: false,
               createLogin: true,
             },
       );
@@ -315,6 +318,18 @@ export function EmployeeFormDialog({
               <Label htmlFor="canViewExpenses" className="cursor-pointer text-sm font-normal">
                 Can access Monthly Expenses tab
                 <span className="ml-1 text-xs text-muted-foreground">(full access — add, edit, mark paid, delete)</span>
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-md border px-3 py-2.5">
+              <Checkbox
+                id="canViewUnbilledEntries"
+                checked={watch("canViewUnbilledEntries")}
+                onCheckedChange={(v) => setValue("canViewUnbilledEntries", v === true)}
+              />
+              <Label htmlFor="canViewUnbilledEntries" className="cursor-pointer text-sm font-normal">
+                Can access Monthly Unbilled Entries tab
+                <span className="ml-1 text-xs text-muted-foreground">(full access — add, edit, mark done, delete)</span>
               </Label>
             </div>
 

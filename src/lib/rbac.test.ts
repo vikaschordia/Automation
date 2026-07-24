@@ -19,26 +19,28 @@ describe("assertAdmin", () => {
 });
 
 describe("assertTaskFieldsEditable", () => {
-  it("lets an ADMIN edit any field, including admin-only ones", () => {
+  it("lets an ADMIN edit any field, including the ones restricted for employees", () => {
     expect(() => assertTaskFieldsEditable("ADMIN", ["priority", "dueDate", "assignedToId"])).not.toThrow();
   });
 
-  it("lets an EMPLOYEE edit the allowed subset (status, progress, remarks, completedDate)", () => {
-    expect(() => assertTaskFieldsEditable("EMPLOYEE", ["status", "progressPercent", "remarks"])).not.toThrow();
+  it("lets an EMPLOYEE fully edit their own task (title, priority, dates, etc.)", () => {
+    expect(() =>
+      assertTaskFieldsEditable("EMPLOYEE", ["status", "progressPercent", "remarks", "priority", "dueDate", "title"]),
+    ).not.toThrow();
   });
 
-  it("blocks an EMPLOYEE from editing admin-only fields like priority or dueDate", () => {
-    expect(() => assertTaskFieldsEditable("EMPLOYEE", ["priority"])).toThrow(ApiError);
-    expect(() => assertTaskFieldsEditable("EMPLOYEE", ["dueDate"])).toThrow(ApiError);
+  it("blocks an EMPLOYEE from reassigning a task away from themselves", () => {
+    expect(() => assertTaskFieldsEditable("EMPLOYEE", ["assignedToId"])).toThrow(ApiError);
+    expect(() => assertTaskFieldsEditable("EMPLOYEE", ["additionalAssignedToIds"])).toThrow(ApiError);
   });
 
   it("blocks the whole patch if even one field is disallowed, not just the offending field", () => {
     try {
-      assertTaskFieldsEditable("EMPLOYEE", ["status", "priority"]);
+      assertTaskFieldsEditable("EMPLOYEE", ["status", "assignedToId"]);
       throw new Error("expected assertTaskFieldsEditable to throw");
     } catch (err) {
       expect(err).toBeInstanceOf(ApiError);
-      expect((err as ApiError).message).toContain("priority");
+      expect((err as ApiError).message).toContain("assignedToId");
     }
   });
 });

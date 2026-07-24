@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { signSession, verifyPassword, SESSION_MAX_AGE } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations/auth";
 import { checkRateLimit, resetRateLimit } from "@/lib/rate-limit";
+import { logAudit } from "@/lib/services/audit-service";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/constants";
 import type { Role } from "@/lib/constants";
 
@@ -34,11 +35,26 @@ export async function POST(request: NextRequest) {
         },
       });
   if (!user || !user.isActive) {
+    await logAudit({
+      session: null,
+      action: "LOGIN_FAILED",
+      entityType: "AUTH",
+      summary: `Failed login attempt for "${identifier}"`,
+      actorNameOverride: identifier,
+    });
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
   const passwordValid = await verifyPassword(parsed.data.password, user.passwordHash);
   if (!passwordValid) {
+    await logAudit({
+      session: null,
+      action: "LOGIN_FAILED",
+      entityType: "AUTH",
+      entityId: user.id,
+      summary: `Failed login attempt for "${identifier}" (wrong password)`,
+      actorNameOverride: identifier,
+    });
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
@@ -48,15 +64,17 @@ export async function POST(request: NextRequest) {
     ? await prisma.employee.findUnique({ where: { id: user.employeeId } })
     : null;
 
-  const token = await signSession({
+  const session = {
     sub: user.id,
     email: user.email,
     role: user.role as Role,
     employeeId: user.employeeId,
     name: employee?.name ?? user.email,
-  });
+  };
+  const token = await signSession(session);
 
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+  await logAudit({ session, action: "LOGIN", entityType: "AUTH", entityId: user.id, summary: `${session.name} logged in` });
 
   const response = NextResponse.json({
     user: { id: user.id, email: user.email, role: user.role, name: employee?.name ?? user.email },

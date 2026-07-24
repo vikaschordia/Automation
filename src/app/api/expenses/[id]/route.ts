@@ -3,6 +3,8 @@ import { requireSession, apiErrorResponse } from "@/lib/session";
 import { assertExpenseAccess } from "@/lib/rbac";
 import { expenseUpdateSchema } from "@/lib/validations/expense";
 import { updateExpense, deleteExpense } from "@/lib/services/expense-service";
+import { logAudit } from "@/lib/services/audit-service";
+import { prisma } from "@/lib/prisma";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -15,6 +17,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
     }
     const expense = await updateExpense(id, parsed.data);
+    await logAudit({ session, action: "UPDATE", entityType: "EXPENSE", entityId: id, summary: `Updated expense "${expense.name}"` });
     return NextResponse.json({ expense });
   } catch (error) {
     return apiErrorResponse(error);
@@ -26,7 +29,9 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
     const session = await requireSession();
     await assertExpenseAccess(session);
     const { id } = await params;
+    const existing = await prisma.monthlyExpense.findUnique({ where: { id }, select: { name: true } });
     await deleteExpense(id);
+    await logAudit({ session, action: "DELETE", entityType: "EXPENSE", entityId: id, summary: `Deleted expense "${existing?.name ?? id}"` });
     return NextResponse.json({ success: true });
   } catch (error) {
     return apiErrorResponse(error);

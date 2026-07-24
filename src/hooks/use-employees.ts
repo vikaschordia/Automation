@@ -16,6 +16,7 @@ export interface EmployeeRow {
   companyId: string;
   managerId: string | null;
   canViewExpenses: boolean;
+  canViewUnbilledEntries: boolean;
   company: { id: string; name: string };
   department: { id: string; name: string };
   additionalCompanies: { id: string; name: string }[];

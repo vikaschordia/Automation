@@ -4,6 +4,8 @@ import { requireSession, apiErrorResponse, ApiError } from "@/lib/session";
 import { assertOwnsTask, assertTaskFieldsEditable } from "@/lib/rbac";
 import { taskUpdateSchema } from "@/lib/validations/task";
 import { serializeTask, taskInclude, updateTask, softDeleteTask, getGroupSummary } from "@/lib/services/task-service";
+import { logAudit } from "@/lib/services/audit-service";
+import { formatTaskNumber } from "@/lib/task-number";
 
 type Params = Promise<{ id: string }>;
 
@@ -59,6 +61,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     assertTaskFieldsEditable(session.role, Object.keys(parsed.data));
 
     const { task, linkedTasks } = await updateTask(taskId, parsed.data, session);
+    await logAudit({
+      session,
+      action: "UPDATE",
+      entityType: "TASK",
+      entityId: taskId,
+      summary: `Updated task ${task.taskNumber}: "${task.title}" (${Object.keys(parsed.data).join(", ")})`,
+    });
     return NextResponse.json({ task, linkedTasks });
   } catch (error) {
     return apiErrorResponse(error);
@@ -69,7 +78,15 @@ export async function DELETE(_request: NextRequest, { params }: { params: Params
   try {
     const session = await requireSession(["ADMIN"]);
     const { id: taskId } = await params;
+    const existing = await loadTaskOr404(taskId);
     await softDeleteTask(taskId, session);
+    await logAudit({
+      session,
+      action: "DELETE",
+      entityType: "TASK",
+      entityId: taskId,
+      summary: `Deleted task ${formatTaskNumber(existing.taskNumber)}: "${existing.title}"`,
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
     return apiErrorResponse(error);

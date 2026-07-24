@@ -3,6 +3,7 @@ import { requireSession, apiErrorResponse } from "@/lib/session";
 import { assertExpenseAccess } from "@/lib/rbac";
 import { expenseCreateSchema } from "@/lib/validations/expense";
 import { listExpenses, createExpense } from "@/lib/services/expense-service";
+import { logAudit } from "@/lib/services/audit-service";
 
 function parseYearMonth(params: URLSearchParams): { year: number; month: number } {
   const now = new Date();
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
     }
     const expense = await createExpense(parsed.data);
+    await logAudit({ session, action: "CREATE", entityType: "EXPENSE", entityId: expense.id, summary: `Created expense "${expense.name}"` });
     return NextResponse.json({ expense }, { status: 201 });
   } catch (error) {
     return apiErrorResponse(error);

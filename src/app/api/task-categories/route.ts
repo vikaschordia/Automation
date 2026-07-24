@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse } from "@/lib/session";
 import { taskCategorySchema } from "@/lib/validations/task-category";
+import { logAudit } from "@/lib/services/audit-service";
 
 export async function GET() {
   try {
@@ -18,7 +19,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireSession(["ADMIN"]);
+    const session = await requireSession(["ADMIN"]);
     const body = await request.json().catch(() => null);
     const parsed = taskCategorySchema.safeParse(body);
     if (!parsed.success) {
@@ -27,6 +28,7 @@ export async function POST(request: NextRequest) {
     const existing = await prisma.taskCategory.findUnique({ where: { name: parsed.data.name } });
     if (existing) return NextResponse.json({ category: existing });
     const category = await prisma.taskCategory.create({ data: { name: parsed.data.name } });
+    await logAudit({ session, action: "CREATE", entityType: "CATEGORY", entityId: category.id, summary: `Created category "${category.name}"` });
     return NextResponse.json({ category }, { status: 201 });
   } catch (error) {
     return apiErrorResponse(error);

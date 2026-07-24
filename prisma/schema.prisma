@@ -119,6 +119,10 @@ model Employee {
   // edit, mark paid, delete), toggled from the employee create/edit form. Defaults off.
   canViewExpenses Boolean @default(false)
 
+  // Same pattern as canViewExpenses above, but for the Monthly Unbilled Entries tab — independent
+  // toggle, an employee can have either, both, or neither.
+  canViewUnbilledEntries Boolean @default(false)
+
   user          User?  @relation("UserEmployee")
   assignedTasks Task[] @relation("AssignedTo")
 
@@ -235,4 +239,67 @@ model TaskHistory {
 
   @@index([taskId])
   @@index([createdAt])
+}
+
+// Same shape and same on-demand recurring-month generation as MonthlyExpense above (see
+// ensureRecurringUnbilledEntries in unbilled-entry-service.ts) — a separate tab for entries that
+// are expected but not yet billed, rather than fixed outgoing expenses.
+model UnbilledEntry {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  description      String
+  expectedDate     DateTime
+  expectedAmount   Float
+  status           String    @default("PENDING") // PENDING | DONE
+  entryDoneDate    DateTime?
+  isRecurring      Boolean   @default(false)
+  recurringGroupId String?
+  remarks          String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([expectedDate])
+  @@index([recurringGroupId])
+}
+
+// System-wide, action-level activity feed (admin-only view) — separate from TaskHistory, which
+// is a per-task field-level diff. Actor fields are denormalized (not a User relation) so a login
+// attempt with a bad email, or a user later deactivated, still reads back sensibly.
+model AuditLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String?  @db.ObjectId
+  userName   String
+  userRole   String? // ADMIN | EMPLOYEE | null for a failed login before we know who it was
+  action     String // LOGIN | LOGIN_FAILED | LOGOUT | CREATE | UPDATE | DELETE
+  entityType String // AUTH | TASK | EXPENSE | UNBILLED_ENTRY | EMPLOYEE | COMPANY | DEPARTMENT | CATEGORY
+  entityId   String?
+  summary    String
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([entityType])
+}
+
+// Single shared, cross-company chat channel — every message is visible to every admin/employee.
+// mentionedUserIds is populated by the composer UI from an explicit @mention picker (not parsed
+// out of free text afterward), so there's no name-collision ambiguity.
+model ChatMessage {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  senderId         String   @db.ObjectId
+  senderName       String
+  senderRole       String // ADMIN | EMPLOYEE
+  body             String
+  mentionedUserIds String[] @db.ObjectId
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([mentionedUserIds])
+}
+
+// One row per user — tracks when they last viewed the chat panel, so we can tell whether a
+// message that @mentions them is unread (see getUnreadMentionInfo in chat-service.ts).
+model ChatRead {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @unique @db.ObjectId
+  lastReadAt DateTime @default(now())
 }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse } from "@/lib/session";
 import { employeeSchema } from "@/lib/validations/employee";
 import { hashPassword } from "@/lib/auth";
+import { logAudit } from "@/lib/services/audit-service";
 
 const EMPLOYEE_DEFAULT_PASSWORD = process.env.EMPLOYEE_DEFAULT_PASSWORD ?? "Employee@123";
 
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireSession(["ADMIN"]);
+    const session = await requireSession(["ADMIN"]);
     const body = await request.json().catch(() => null);
     const parsed = employeeSchema.safeParse(body);
     if (!parsed.success) {
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
           companyId: data.companyId,
           managerId: data.managerId || null,
           canViewExpenses: data.canViewExpenses ?? false,
+          canViewUnbilledEntries: data.canViewUnbilledEntries ?? false,
           additionalCompanies: additionalCompanyIds.length > 0 ? { connect: additionalCompanyIds.map((id) => ({ id })) } : undefined,
         },
       });
@@ -108,6 +110,13 @@ export async function POST(request: NextRequest) {
       return created;
     });
 
+    await logAudit({
+      session,
+      action: "CREATE",
+      entityType: "EMPLOYEE",
+      entityId: employee.id,
+      summary: `Created employee "${employee.name}" (${employee.employeeCode})`,
+    });
     return NextResponse.json({ employee }, { status: 201 });
   } catch (error) {
     return apiErrorResponse(error);

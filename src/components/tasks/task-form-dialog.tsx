@@ -139,7 +139,14 @@ export function TaskFormDialog({
       .filter(Boolean);
     const payload = { ...values, tags };
     if (isEdit && task) {
-      await updateMutation.mutateAsync({ id: task.id, input: payload });
+      // assignedToId/additionalAssignedToIds are always present in form state (they're set by
+      // reset() even though the employee never sees an editable control for them) — the server
+      // rejects the whole patch if an employee sends either key at all, so they must be stripped
+      // here rather than merely left unchanged, or every employee edit would 403.
+      const { assignedToId, additionalAssignedToIds, ...employeeEditablePayload } = payload;
+      void assignedToId;
+      void additionalAssignedToIds;
+      await updateMutation.mutateAsync({ id: task.id, input: isAdmin ? payload : employeeEditablePayload });
     } else {
       await createMutation.mutateAsync(payload);
     }

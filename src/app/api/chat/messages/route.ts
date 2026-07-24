@@ -5,8 +5,8 @@ import { listMessages, createMessage } from "@/lib/services/chat-service";
 
 export async function GET() {
   try {
-    await requireSession();
-    const messages = await listMessages();
+    const session = await requireSession();
+    const messages = await listMessages(session.sub);
     return NextResponse.json({ messages });
   } catch (error) {
     return apiErrorResponse(error);

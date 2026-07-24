@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { startOfDay } from "@/lib/delay";
 import type { SessionPayload } from "@/lib/auth";
 
 export interface ChatRecipient {
@@ -24,8 +25,24 @@ export async function listRecipients(): Promise<ChatRecipient[]> {
 
 const MESSAGE_LIMIT = 100;
 
-export async function listMessages() {
+/**
+ * Chat is a same-day scratchpad, not a persistent history — this app has no background scheduler
+ * (see ensureRecurringExpenses for the same on-demand pattern), so "cleared once the date changes"
+ * means purging anything from a previous day the next time chat is touched, rather than on a timer.
+ */
+async function purgeOldMessages(): Promise<void> {
+  await prisma.chatMessage.deleteMany({ where: { createdAt: { lt: startOfDay(new Date()) } } });
+}
+
+/**
+ * Only messages the caller sent or was @mentioned in are visible to them — this is a set of
+ * tag-directed conversations, not a public broadcast channel, so e.g. a message from Ankit to
+ * @Admin must never show up for Devyani.
+ */
+export async function listMessages(userId: string) {
+  await purgeOldMessages();
   const messages = await prisma.chatMessage.findMany({
+    where: { OR: [{ senderId: userId }, { mentionedUserIds: { has: userId } }] },
     orderBy: { createdAt: "desc" },
     take: MESSAGE_LIMIT,
   });
@@ -60,6 +77,7 @@ export interface UnreadMentionInfo {
 }
 
 export async function getUnreadMentionInfo(userId: string): Promise<UnreadMentionInfo> {
+  await purgeOldMessages();
   const read = await prisma.chatRead.findUnique({ where: { userId } });
   const since = read?.lastReadAt ?? new Date(0);
 

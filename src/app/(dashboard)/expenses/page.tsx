@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Download, Plus, Pencil, Trash2, CircleCheck, Undo2, Wallet } from "lucide-react";
 import { useSession } from "@/components/layout/session-provider";
+import { useCompanies } from "@/hooks/use-companies";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ExpenseFormDialog } from "@/components/expenses/expense-form-dialog";
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 const MONTH_NAMES = [
@@ -29,12 +31,16 @@ function shiftMonth(year: number, month: number, delta: number): { year: number;
 export default function ExpensesPage() {
   const { role, canViewExpenses } = useSession();
   const canManage = role === "ADMIN" || canViewExpenses;
-  const columnCount = canManage ? 8 : 7;
+  const columnCount = canManage ? 9 : 8;
+
+  const { data: companies } = useCompanies();
+  const [activeCompanyId, setActiveCompanyId] = useState<string>("all");
+  const activeCompanyName = activeCompanyId === "all" ? undefined : companies?.find((c) => c.id === activeCompanyId)?.name;
 
   const now = new Date();
   const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
 
-  const { data, isLoading } = useExpenses(cursor.year, cursor.month);
+  const { data, isLoading } = useExpenses(cursor.year, cursor.month, activeCompanyId === "all" ? undefined : activeCompanyId);
   const expenses = data?.expenses ?? [];
   const updateMutation = useUpdateExpense();
   const deleteMutation = useDeleteExpense();
@@ -66,6 +72,19 @@ export default function ExpensesPage() {
         }
       />
 
+      {companies && companies.length > 0 && (
+        <Tabs value={activeCompanyId} onValueChange={setActiveCompanyId} className="mb-4">
+          <TabsList>
+            <TabsTrigger value="all">All Companies</TabsTrigger>
+            {companies.map((c) => (
+              <TabsTrigger key={c.id} value={c.id}>
+                {c.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => setCursor((c) => shiftMonth(c.year, c.month, -1))}>
@@ -96,7 +115,9 @@ export default function ExpensesPage() {
             )}
           </p>
           <Button asChild variant="outline">
-            <a href={`/api/expenses/export?year=${cursor.year}&month=${cursor.month}`}>
+            <a
+              href={`/api/expenses/export?year=${cursor.year}&month=${cursor.month}${activeCompanyId !== "all" ? `&companyId=${activeCompanyId}` : ""}`}
+            >
               <Download className="size-4" /> Export to Excel
             </a>
           </Button>
@@ -108,6 +129,7 @@ export default function ExpensesPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Expense Name</TableHead>
+              <TableHead>Company</TableHead>
               <TableHead>Due Date</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead>Recurring</TableHead>
@@ -132,13 +154,15 @@ export default function ExpensesPage() {
               <TableRow>
                 <TableCell colSpan={columnCount} className="py-12 text-center text-sm text-muted-foreground">
                   <Wallet className="mx-auto mb-2 size-8 opacity-40" />
-                  No expenses for {MONTH_NAMES[cursor.month - 1]} {cursor.year}.{canManage && " Add one to get started."}
+                  No expenses for {MONTH_NAMES[cursor.month - 1]} {cursor.year}
+                  {activeCompanyName ? ` (${activeCompanyName})` : ""}.{canManage && " Add one to get started."}
                 </TableCell>
               </TableRow>
             )}
             {expenses.map((e) => (
               <TableRow key={e.id} className={cn(e.status === "PAID" && "bg-emerald-50/60 dark:bg-emerald-950/10")}>
                 <TableCell className="font-medium">{e.name}</TableCell>
+                <TableCell className="text-muted-foreground">{e.company.name}</TableCell>
                 <TableCell>{formatDate(e.dueDate)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(e.amount)}</TableCell>
                 <TableCell>
@@ -186,7 +210,14 @@ export default function ExpensesPage() {
 
       {canManage && (
         <>
-          <ExpenseFormDialog open={formOpen} onOpenChange={setFormOpen} expense={editing} year={cursor.year} month={cursor.month} />
+          <ExpenseFormDialog
+            open={formOpen}
+            onOpenChange={setFormOpen}
+            expense={editing}
+            year={cursor.year}
+            month={cursor.month}
+            defaultCompanyId={activeCompanyId === "all" ? undefined : activeCompanyId}
+          />
 
           <MarkPaidDialog
             open={!!marking}

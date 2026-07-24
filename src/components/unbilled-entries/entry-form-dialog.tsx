@@ -7,12 +7,14 @@ import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { unbilledEntryCreateSchema, type UnbilledEntryCreateInput } from "@/lib/validations/unbilled-entry";
 import { useCreateUnbilledEntry, useUpdateUnbilledEntry, type UnbilledEntryRow } from "@/hooks/use-unbilled-entries";
+import { useCompanies } from "@/hooks/use-companies";
 import { toDateInputValue } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -37,14 +39,19 @@ export function EntryFormDialog({
   entry,
   year,
   month,
+  defaultCompanyId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   entry?: UnbilledEntryRow | null;
   year: number;
   month: number;
+  /** Preselects the company when adding a new entry from a specific company sub-tab; left blank
+   *  (forcing an explicit choice) when adding from the "All Companies" tab. */
+  defaultCompanyId?: string;
 }) {
   const isEdit = !!entry;
+  const { data: companies } = useCompanies();
   const createMutation = useCreateUnbilledEntry();
   const updateMutation = useUpdateUnbilledEntry();
   const pending = createMutation.isPending || updateMutation.isPending;
@@ -58,7 +65,7 @@ export function EntryFormDialog({
     formState: { errors },
   } = useForm<EntryFormValues, unknown, UnbilledEntryCreateInput>({
     resolver: zodResolver(unbilledEntryCreateSchema),
-    defaultValues: { description: "", expectedDate: new Date(), expectedAmount: 0, isRecurring: false, remarks: "" },
+    defaultValues: { description: "", companyId: "", expectedDate: new Date(), expectedAmount: 0, isRecurring: false, remarks: "" },
   });
 
   useEffect(() => {
@@ -66,6 +73,7 @@ export function EntryFormDialog({
     if (entry) {
       reset({
         description: entry.description,
+        companyId: entry.companyId,
         expectedDate: new Date(entry.expectedDate),
         expectedAmount: entry.expectedAmount,
         isRecurring: entry.isRecurring,
@@ -74,13 +82,14 @@ export function EntryFormDialog({
     } else {
       reset({
         description: "",
+        companyId: defaultCompanyId ?? "",
         expectedDate: new Date(defaultExpectedDate(year, month)),
         expectedAmount: 0,
         isRecurring: false,
         remarks: "",
       });
     }
-  }, [open, entry, year, month, reset]);
+  }, [open, entry, year, month, defaultCompanyId, reset]);
 
   async function onSubmit(values: UnbilledEntryCreateInput) {
     if (isEdit && entry) {
@@ -107,6 +116,22 @@ export function EntryFormDialog({
             <Label htmlFor="description">Entry description</Label>
             <Input id="description" placeholder="e.g. Consulting fee — Client X" {...register("description")} />
             {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Company</Label>
+            <Select value={watch("companyId")} onValueChange={(v) => setValue("companyId", v, { shouldValidate: true })}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select company" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies?.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.companyId && <p className="text-xs text-destructive">{errors.companyId.message}</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">

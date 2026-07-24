@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, apiErrorResponse } from "@/lib/session";
-import { assertUnbilledEntryAccess } from "@/lib/rbac";
+import { assertUnbilledEntryAccess, resolveAccessibleCompanyFilter } from "@/lib/rbac";
 import { listUnbilledEntries } from "@/lib/services/unbilled-entry-service";
 import { addUnbilledEntrySheet } from "@/lib/excel/unbilled-entry-sheet";
 import { excelResponseHeaders, toResponseBody, workbookToBuffer } from "@/lib/excel/task-list-sheet";
@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
     const year = Number(request.nextUrl.searchParams.get("year")) || now.getFullYear();
     const month = Number(request.nextUrl.searchParams.get("month")) || now.getMonth() + 1;
 
-    const entries = await listUnbilledEntries(year, month);
+    const companyFilter = await resolveAccessibleCompanyFilter(session, request.nextUrl.searchParams.get("companyId"));
+    const entries = await listUnbilledEntries(year, month, companyFilter);
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "Daily Task Tracker";

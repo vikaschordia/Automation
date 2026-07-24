@@ -258,12 +258,21 @@ async function main() {
     });
   }
 
-  // ---- Monthly expenses (no foreign keys — restored as-is) ----
-  console.log(`Restoring ${data.monthlyExpenses.length} monthly expenses...`);
+  // ---- Monthly expenses ----
+  // This export pre-dates per-company Monthly Expenses (companyId didn't exist yet), so every
+  // restored row is assigned to Sumicot Limited — the same backfill decision applied to the live
+  // database when the companyId field was introduced.
+  const sumicotExportCompany = data.companies.find((c) => c.code === "SL");
+  const sumicotCompanyId = sumicotExportCompany ? companyIdMap.get(sumicotExportCompany.id) : undefined;
+  if (!sumicotCompanyId) {
+    throw new Error('Could not resolve "Sumicot Limited" (code SL) company id for monthly expense restore');
+  }
+  console.log(`Restoring ${data.monthlyExpenses.length} monthly expenses (assigned to Sumicot Limited)...`);
   for (const m of data.monthlyExpenses) {
     await prisma.monthlyExpense.create({
       data: {
         name: m.name,
+        companyId: sumicotCompanyId,
         dueDate: new Date(m.dueDate),
         amount: m.amount,
         status: m.status,

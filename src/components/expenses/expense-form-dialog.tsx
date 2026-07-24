@@ -7,12 +7,14 @@ import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { expenseCreateSchema, type ExpenseCreateInput } from "@/lib/validations/expense";
 import { useCreateExpense, useUpdateExpense, type ExpenseRow } from "@/hooks/use-expenses";
+import { useCompanies } from "@/hooks/use-companies";
 import { toDateInputValue } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -37,14 +39,19 @@ export function ExpenseFormDialog({
   expense,
   year,
   month,
+  defaultCompanyId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   expense?: ExpenseRow | null;
   year: number;
   month: number;
+  /** Preselects the company when adding a new expense from a specific company sub-tab; left
+   *  blank (forcing an explicit choice) when adding from the "All Companies" tab. */
+  defaultCompanyId?: string;
 }) {
   const isEdit = !!expense;
+  const { data: companies } = useCompanies();
   const createMutation = useCreateExpense();
   const updateMutation = useUpdateExpense();
   const pending = createMutation.isPending || updateMutation.isPending;
@@ -58,7 +65,7 @@ export function ExpenseFormDialog({
     formState: { errors },
   } = useForm<ExpenseFormValues, unknown, ExpenseCreateInput>({
     resolver: zodResolver(expenseCreateSchema),
-    defaultValues: { name: "", dueDate: new Date(), amount: 0, isRecurring: false, remarks: "" },
+    defaultValues: { name: "", companyId: "", dueDate: new Date(), amount: 0, isRecurring: false, remarks: "" },
   });
 
   useEffect(() => {
@@ -66,15 +73,23 @@ export function ExpenseFormDialog({
     if (expense) {
       reset({
         name: expense.name,
+        companyId: expense.companyId,
         dueDate: new Date(expense.dueDate),
         amount: expense.amount,
         isRecurring: expense.isRecurring,
         remarks: expense.remarks ?? "",
       });
     } else {
-      reset({ name: "", dueDate: new Date(defaultDueDate(year, month)), amount: 0, isRecurring: false, remarks: "" });
+      reset({
+        name: "",
+        companyId: defaultCompanyId ?? "",
+        dueDate: new Date(defaultDueDate(year, month)),
+        amount: 0,
+        isRecurring: false,
+        remarks: "",
+      });
     }
-  }, [open, expense, year, month, reset]);
+  }, [open, expense, year, month, defaultCompanyId, reset]);
 
   async function onSubmit(values: ExpenseCreateInput) {
     if (isEdit && expense) {
@@ -101,6 +116,22 @@ export function ExpenseFormDialog({
             <Label htmlFor="name">Expense name</Label>
             <Input id="name" placeholder="e.g. Office Rent" {...register("name")} />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Company</Label>
+            <Select value={watch("companyId")} onValueChange={(v) => setValue("companyId", v, { shouldValidate: true })}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select company" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies?.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.companyId && <p className="text-xs text-destructive">{errors.companyId.message}</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">

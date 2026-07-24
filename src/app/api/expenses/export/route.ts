@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, apiErrorResponse } from "@/lib/session";
-import { assertExpenseAccess } from "@/lib/rbac";
+import { assertExpenseAccess, resolveAccessibleCompanyFilter } from "@/lib/rbac";
 import { listExpenses } from "@/lib/services/expense-service";
 import { addExpenseSheet } from "@/lib/excel/expense-sheet";
 import { excelResponseHeaders, toResponseBody, workbookToBuffer } from "@/lib/excel/task-list-sheet";
@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
     const year = Number(request.nextUrl.searchParams.get("year")) || now.getFullYear();
     const month = Number(request.nextUrl.searchParams.get("month")) || now.getMonth() + 1;
 
-    const expenses = await listExpenses(year, month);
+    const companyFilter = await resolveAccessibleCompanyFilter(session, request.nextUrl.searchParams.get("companyId"));
+    const expenses = await listExpenses(year, month, companyFilter);
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "Daily Task Tracker";

@@ -6,6 +6,8 @@ import type { UnbilledEntryStatus } from "@/lib/constants";
 export interface UnbilledEntryRow {
   id: string;
   description: string;
+  companyId: string;
+  company: { id: string; name: string };
   expectedDate: string;
   expectedAmount: number;
   status: UnbilledEntryStatus;
@@ -23,10 +25,13 @@ async function jsonOrThrow(res: Response) {
   return data;
 }
 
-export function useUnbilledEntries(year: number, month: number) {
+export function useUnbilledEntries(year: number, month: number, companyId?: string) {
   return useQuery<{ entries: UnbilledEntryRow[] }>({
-    queryKey: ["unbilled-entries", year, month],
-    queryFn: async () => jsonOrThrow(await fetch(`/api/unbilled-entries?year=${year}&month=${month}`)),
+    queryKey: ["unbilled-entries", year, month, companyId ?? "all"],
+    queryFn: async () =>
+      jsonOrThrow(
+        await fetch(`/api/unbilled-entries?year=${year}&month=${month}${companyId ? `&companyId=${companyId}` : ""}`),
+      ),
   });
 }
 

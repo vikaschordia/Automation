@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, apiErrorResponse } from "@/lib/session";
-import { assertUnbilledEntryAccess } from "@/lib/rbac";
+import { assertUnbilledEntryAccess, resolveAccessibleCompanyFilter } from "@/lib/rbac";
 import { unbilledEntryCreateSchema } from "@/lib/validations/unbilled-entry";
 import { listUnbilledEntries, createUnbilledEntry } from "@/lib/services/unbilled-entry-service";
 import { logAudit } from "@/lib/services/audit-service";
@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
     const session = await requireSession();
     await assertUnbilledEntryAccess(session);
     const { year, month } = parseYearMonth(request.nextUrl.searchParams);
-    const entries = await listUnbilledEntries(year, month);
+    const companyFilter = await resolveAccessibleCompanyFilter(session, request.nextUrl.searchParams.get("companyId"));
+    const entries = await listUnbilledEntries(year, month, companyFilter);
     return NextResponse.json({ entries, year, month });
   } catch (error) {
     return apiErrorResponse(error);
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
     }
+    await resolveAccessibleCompanyFilter(session, parsed.data.companyId);
     const entry = await createUnbilledEntry(parsed.data);
     await logAudit({
       session,

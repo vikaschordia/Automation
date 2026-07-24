@@ -3,8 +3,11 @@ import { addReportHeader, styleHeaderRow } from "@/lib/excel/styles";
 import { EXPENSE_STATUS_META } from "@/lib/constants";
 import type { MonthlyExpense } from "@prisma/client";
 
+type MonthlyExpenseWithCompany = MonthlyExpense & { company: { name: string } };
+
 const COLUMNS = [
   { header: "Expense Name", key: "name", width: 28 },
+  { header: "Company", key: "company", width: 22 },
   { header: "Due Date", key: "dueDate", width: 14 },
   { header: "Amount", key: "amount", width: 14 },
   { header: "Status", key: "status", width: 12 },
@@ -15,7 +18,7 @@ const COLUMNS = [
 
 export function addExpenseSheet(
   workbook: ExcelJS.Workbook,
-  expenses: MonthlyExpense[],
+  expenses: MonthlyExpenseWithCompany[],
   options: { title: string; generatedBy: string },
 ) {
   const worksheet = workbook.addWorksheet("Monthly Expenses", { views: [{ state: "frozen", ySplit: 5 }] });
@@ -29,6 +32,7 @@ export function addExpenseSheet(
   expenses.forEach((expense) => {
     const excelRow = worksheet.addRow({
       name: expense.name,
+      company: expense.company.name,
       dueDate: expense.dueDate,
       amount: expense.amount,
       status: EXPENSE_STATUS_META[expense.status as "PAID" | "UNPAID"]?.label ?? expense.status,

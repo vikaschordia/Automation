@@ -17,8 +17,16 @@ function dueDateForMonth(day: number, year: number, month: number): Date {
   return new Date(year, month - 1, Math.min(day, lastDay));
 }
 
-export function monthRangeWhere(year: number, month: number): Prisma.MonthlyExpenseWhereInput {
-  return { dueDate: { gte: new Date(year, month - 1, 1), lt: new Date(year, month, 1) } };
+/**
+ * companyFilter: undefined = no company restriction (admin viewing "All Companies"), a single
+ * companyId = one company's sub-tab, or string[] = "one of these" (an employee's "All Companies"
+ * view, scoped to the companies they're mapped to — see resolveAccessibleCompanyFilter).
+ */
+export function monthRangeWhere(year: number, month: number, companyFilter?: string | string[]): Prisma.MonthlyExpenseWhereInput {
+  return {
+    dueDate: { gte: new Date(year, month - 1, 1), lt: new Date(year, month, 1) },
+    ...(companyFilter ? { companyId: Array.isArray(companyFilter) ? { in: companyFilter } : companyFilter } : {}),
+  };
 }
 
 /**
@@ -53,6 +61,7 @@ export async function ensureRecurringExpenses(targetYear: number, targetMonth: n
       [cursorYear, cursorMonth] = addMonth(cursorYear, cursorMonth);
       toCreate.push({
         name: latest.name,
+        companyId: latest.companyId,
         dueDate: dueDateForMonth(originalDay, cursorYear, cursorMonth),
         amount: latest.amount,
         status: "UNPAID",
@@ -68,21 +77,27 @@ export async function ensureRecurringExpenses(targetYear: number, targetMonth: n
   }
 }
 
-export async function listExpenses(year: number, month: number) {
+export async function listExpenses(year: number, month: number, companyFilter?: string | string[]) {
   await ensureRecurringExpenses(year, month);
-  return prisma.monthlyExpense.findMany({ where: monthRangeWhere(year, month), orderBy: { dueDate: "asc" } });
+  return prisma.monthlyExpense.findMany({
+    where: monthRangeWhere(year, month, companyFilter),
+    orderBy: { dueDate: "asc" },
+    include: { company: { select: { id: true, name: true } } },
+  });
 }
 
 export async function createExpense(input: ExpenseCreateInput) {
   return prisma.monthlyExpense.create({
     data: {
       name: input.name,
+      companyId: input.companyId,
       dueDate: input.dueDate,
       amount: input.amount,
       isRecurring: input.isRecurring,
       recurringGroupId: input.isRecurring ? randomUUID() : null,
       remarks: input.remarks || null,
     },
+    include: { company: { select: { id: true, name: true } } },
   });
 }
 
@@ -91,6 +106,7 @@ export async function updateExpense(id: string, patch: ExpenseUpdateInput) {
 
   const data: Prisma.MonthlyExpenseUpdateInput = {};
   if (patch.name !== undefined) data.name = patch.name;
+  if (patch.companyId !== undefined) data.company = { connect: { id: patch.companyId } };
   if (patch.dueDate !== undefined) data.dueDate = patch.dueDate;
   if (patch.amount !== undefined) data.amount = patch.amount;
   if (patch.remarks !== undefined) data.remarks = patch.remarks || null;
@@ -115,7 +131,7 @@ export async function updateExpense(id: string, patch: ExpenseUpdateInput) {
     }
   }
 
-  return prisma.monthlyExpense.update({ where: { id }, data });
+  return prisma.monthlyExpense.update({ where: { id }, data, include: { company: { select: { id: true, name: true } } } });
 }
 
 export async function deleteExpense(id: string) {

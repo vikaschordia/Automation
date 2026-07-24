@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, apiErrorResponse } from "@/lib/session";
-import { assertExpenseAccess } from "@/lib/rbac";
+import { assertExpenseAccess, resolveAccessibleCompanyFilter } from "@/lib/rbac";
 import { expenseCreateSchema } from "@/lib/validations/expense";
 import { listExpenses, createExpense } from "@/lib/services/expense-service";
 import { logAudit } from "@/lib/services/audit-service";
@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
     const session = await requireSession();
     await assertExpenseAccess(session);
     const { year, month } = parseYearMonth(request.nextUrl.searchParams);
-    const expenses = await listExpenses(year, month);
+    const companyFilter = await resolveAccessibleCompanyFilter(session, request.nextUrl.searchParams.get("companyId"));
+    const expenses = await listExpenses(year, month, companyFilter);
     return NextResponse.json({ expenses, year, month });
   } catch (error) {
     return apiErrorResponse(error);
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
     }
+    await resolveAccessibleCompanyFilter(session, parsed.data.companyId);
     const expense = await createExpense(parsed.data);
     await logAudit({ session, action: "CREATE", entityType: "EXPENSE", entityId: expense.id, summary: `Created expense "${expense.name}"` });
     return NextResponse.json({ expense }, { status: 201 });

@@ -17,8 +17,16 @@ function dateForMonth(day: number, year: number, month: number): Date {
   return new Date(year, month - 1, Math.min(day, lastDay));
 }
 
-export function monthRangeWhere(year: number, month: number): Prisma.UnbilledEntryWhereInput {
-  return { expectedDate: { gte: new Date(year, month - 1, 1), lt: new Date(year, month, 1) } };
+/**
+ * companyFilter: undefined = no restriction (admin's "All Companies"), a single companyId = one
+ * company's sub-tab, or string[] = "one of these" (an employee's "All Companies", scoped to the
+ * companies they're mapped to — see resolveAccessibleCompanyFilter).
+ */
+export function monthRangeWhere(year: number, month: number, companyFilter?: string | string[]): Prisma.UnbilledEntryWhereInput {
+  return {
+    expectedDate: { gte: new Date(year, month - 1, 1), lt: new Date(year, month, 1) },
+    ...(companyFilter ? { companyId: Array.isArray(companyFilter) ? { in: companyFilter } : companyFilter } : {}),
+  };
 }
 
 /**
@@ -52,6 +60,7 @@ export async function ensureRecurringUnbilledEntries(targetYear: number, targetM
       [cursorYear, cursorMonth] = addMonth(cursorYear, cursorMonth);
       toCreate.push({
         description: latest.description,
+        companyId: latest.companyId,
         expectedDate: dateForMonth(originalDay, cursorYear, cursorMonth),
         expectedAmount: latest.expectedAmount,
         status: "PENDING",
@@ -67,21 +76,27 @@ export async function ensureRecurringUnbilledEntries(targetYear: number, targetM
   }
 }
 
-export async function listUnbilledEntries(year: number, month: number) {
+export async function listUnbilledEntries(year: number, month: number, companyFilter?: string | string[]) {
   await ensureRecurringUnbilledEntries(year, month);
-  return prisma.unbilledEntry.findMany({ where: monthRangeWhere(year, month), orderBy: { expectedDate: "asc" } });
+  return prisma.unbilledEntry.findMany({
+    where: monthRangeWhere(year, month, companyFilter),
+    orderBy: { expectedDate: "asc" },
+    include: { company: { select: { id: true, name: true } } },
+  });
 }
 
 export async function createUnbilledEntry(input: UnbilledEntryCreateInput) {
   return prisma.unbilledEntry.create({
     data: {
       description: input.description,
+      companyId: input.companyId,
       expectedDate: input.expectedDate,
       expectedAmount: input.expectedAmount,
       isRecurring: input.isRecurring,
       recurringGroupId: input.isRecurring ? randomUUID() : null,
       remarks: input.remarks || null,
     },
+    include: { company: { select: { id: true, name: true } } },
   });
 }
 
@@ -90,6 +105,7 @@ export async function updateUnbilledEntry(id: string, patch: UnbilledEntryUpdate
 
   const data: Prisma.UnbilledEntryUpdateInput = {};
   if (patch.description !== undefined) data.description = patch.description;
+  if (patch.companyId !== undefined) data.company = { connect: { id: patch.companyId } };
   if (patch.expectedDate !== undefined) data.expectedDate = patch.expectedDate;
   if (patch.expectedAmount !== undefined) data.expectedAmount = patch.expectedAmount;
   if (patch.remarks !== undefined) data.remarks = patch.remarks || null;
@@ -114,7 +130,7 @@ export async function updateUnbilledEntry(id: string, patch: UnbilledEntryUpdate
     }
   }
 
-  return prisma.unbilledEntry.update({ where: { id }, data });
+  return prisma.unbilledEntry.update({ where: { id }, data, include: { company: { select: { id: true, name: true } } } });
 }
 
 export async function deleteUnbilledEntry(id: string) {

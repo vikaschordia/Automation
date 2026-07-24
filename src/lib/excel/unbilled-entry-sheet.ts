@@ -3,8 +3,11 @@ import { addReportHeader, styleHeaderRow } from "@/lib/excel/styles";
 import { UNBILLED_ENTRY_STATUS_META } from "@/lib/constants";
 import type { UnbilledEntry } from "@prisma/client";
 
+type UnbilledEntryWithCompany = UnbilledEntry & { company: { name: string } };
+
 const COLUMNS = [
   { header: "Description", key: "description", width: 32 },
+  { header: "Company", key: "company", width: 22 },
   { header: "Expected Date", key: "expectedDate", width: 14 },
   { header: "Expected Amount", key: "expectedAmount", width: 16 },
   { header: "Status", key: "status", width: 12 },
@@ -15,7 +18,7 @@ const COLUMNS = [
 
 export function addUnbilledEntrySheet(
   workbook: ExcelJS.Workbook,
-  entries: UnbilledEntry[],
+  entries: UnbilledEntryWithCompany[],
   options: { title: string; generatedBy: string },
 ) {
   const worksheet = workbook.addWorksheet("Monthly Unbilled Entries", { views: [{ state: "frozen", ySplit: 5 }] });
@@ -29,6 +32,7 @@ export function addUnbilledEntrySheet(
   entries.forEach((entry) => {
     const excelRow = worksheet.addRow({
       description: entry.description,
+      company: entry.company.name,
       expectedDate: entry.expectedDate,
       expectedAmount: entry.expectedAmount,
       status: UNBILLED_ENTRY_STATUS_META[entry.status as "PENDING" | "DONE"]?.label ?? entry.status,

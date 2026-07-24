@@ -6,6 +6,8 @@ import type { ExpenseStatus } from "@/lib/constants";
 export interface ExpenseRow {
   id: string;
   name: string;
+  companyId: string;
+  company: { id: string; name: string };
   dueDate: string;
   amount: number;
   status: ExpenseStatus;
@@ -23,10 +25,13 @@ async function jsonOrThrow(res: Response) {
   return data;
 }
 
-export function useExpenses(year: number, month: number) {
+export function useExpenses(year: number, month: number, companyId?: string) {
   return useQuery<{ expenses: ExpenseRow[] }>({
-    queryKey: ["expenses", year, month],
-    queryFn: async () => jsonOrThrow(await fetch(`/api/expenses?year=${year}&month=${month}`)),
+    queryKey: ["expenses", year, month, companyId ?? "all"],
+    queryFn: async () =>
+      jsonOrThrow(
+        await fetch(`/api/expenses?year=${year}&month=${month}${companyId ? `&companyId=${companyId}` : ""}`),
+      ),
   });
 }
 

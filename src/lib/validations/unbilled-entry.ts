@@ -3,6 +3,7 @@ import { UNBILLED_ENTRY_STATUSES } from "@/lib/constants";
 
 export const unbilledEntryCreateSchema = z.object({
   description: z.string().trim().min(2, "Description must be at least 2 characters").max(200),
+  companyId: z.string().min(1, "Company is required"),
   expectedDate: z.coerce.date(),
   expectedAmount: z.coerce.number().positive("Amount must be greater than 0"),
   isRecurring: z.boolean().default(false),
@@ -11,6 +12,7 @@ export const unbilledEntryCreateSchema = z.object({
 
 export const unbilledEntryUpdateSchema = z.object({
   description: z.string().trim().min(2).max(200).optional(),
+  companyId: z.string().min(1).optional(),
   expectedDate: z.coerce.date().optional(),
   expectedAmount: z.coerce.number().positive("Amount must be greater than 0").optional(),
   status: z.enum(UNBILLED_ENTRY_STATUSES).optional(),

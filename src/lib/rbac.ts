@@ -94,3 +94,35 @@ export async function assertUnbilledEntryAccess(session: SessionPayload): Promis
     throw new ApiError(403, "You don't have access to Monthly Unbilled Entries");
   }
 }
+
+/**
+ * Shared by Monthly Expenses and Monthly Unbilled Entries, both of which now have per-company
+ * sub-tabs. An admin can see/create under any company. An employee is restricted to their primary
+ * + additional mapped companies (same rule as assertEmployeeTaskCreateAllowed above) — for a
+ * specific companyId this throws if it's outside that set; for the "All Companies" tab
+ * (requestedCompanyId omitted) it instead returns the employee's allowed set so the caller can
+ * scope the query to it, since an employee's "All" must never mean the whole org's data.
+ *
+ * Returns: undefined = no filter needed (admin, no specific company requested), a companyId
+ * string = filter to exactly that company, or a string[] = filter to "one of these companies"
+ * (employee's "All Companies" view).
+ */
+export async function resolveAccessibleCompanyFilter(
+  session: SessionPayload,
+  requestedCompanyId?: string | null,
+): Promise<string | string[] | undefined> {
+  if (session.role === "ADMIN") return requestedCompanyId ?? undefined;
+
+  const employee = session.employeeId
+    ? await prisma.employee.findUnique({ where: { id: session.employeeId }, select: { companyId: true, additionalCompanyIds: true } })
+    : null;
+  const allowed = employee ? Array.from(new Set([employee.companyId, ...employee.additionalCompanyIds])) : [];
+
+  if (requestedCompanyId) {
+    if (!allowed.includes(requestedCompanyId)) {
+      throw new ApiError(403, "You don't have access to this company");
+    }
+    return requestedCompanyId;
+  }
+  return allowed;
+}

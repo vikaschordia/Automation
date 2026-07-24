@@ -71,6 +71,8 @@ model Company {
   additionalEmployees Employee[] @relation("EmployeeAdditionalCompanies", fields: [additionalEmployeeIds], references: [id])
   additionalEmployeeIds String[] @db.ObjectId
   tasks       Task[]
+  monthlyExpenses MonthlyExpense[]
+  unbilledEntries UnbilledEntry[]
 }
 
 model Department {
@@ -221,8 +223,12 @@ model MonthlyExpense {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
+  companyId String  @db.ObjectId
+  company   Company @relation(fields: [companyId], references: [id])
+
   @@index([dueDate])
   @@index([recurringGroupId])
+  @@index([companyId])
 }
 
 model TaskHistory {
@@ -257,8 +263,12 @@ model UnbilledEntry {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
+  companyId String  @db.ObjectId
+  company   Company @relation(fields: [companyId], references: [id])
+
   @@index([expectedDate])
   @@index([recurringGroupId])
+  @@index([companyId])
 }
 
 // System-wide, action-level activity feed (admin-only view) — separate from TaskHistory, which

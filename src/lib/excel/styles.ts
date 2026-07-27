@@ -37,7 +37,7 @@ export function addReportHeader(worksheet: Worksheet, title: string, generatedBy
 
   worksheet.mergeCells(3, 1, 3, columnCount);
   const metaCell = worksheet.getCell(3, 1);
-  metaCell.value = `Generated ${new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })} by ${generatedBy}`;
+  metaCell.value = `Generated ${new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })} by ${generatedBy}`;
   metaCell.font = SUBTITLE_FONT as never;
   worksheet.getRow(3).height = 16;
 

@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MultiSelect } from "@/components/shared/multi-select";
 import { cn } from "@/lib/utils";
 
 const MONTH_NAMES = [
@@ -34,13 +34,13 @@ export default function UnbilledEntriesPage() {
   const columnCount = canManage ? 8 : 7;
 
   const { data: companies } = useCompanies();
-  const [activeCompanyId, setActiveCompanyId] = useState<string>("all");
-  const activeCompanyName = activeCompanyId === "all" ? undefined : companies?.find((c) => c.id === activeCompanyId)?.name;
+  const [activeCompanyIds, setActiveCompanyIds] = useState<string[]>([]);
+  const activeCompanyName = activeCompanyIds.length === 1 ? companies?.find((c) => c.id === activeCompanyIds[0])?.name : undefined;
 
   const now = new Date();
   const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
 
-  const { data, isLoading } = useUnbilledEntries(cursor.year, cursor.month, activeCompanyId === "all" ? undefined : activeCompanyId);
+  const { data, isLoading } = useUnbilledEntries(cursor.year, cursor.month, activeCompanyIds);
   const entries = data?.entries ?? [];
   const updateMutation = useUpdateUnbilledEntry();
   const deleteMutation = useDeleteUnbilledEntry();
@@ -73,16 +73,13 @@ export default function UnbilledEntriesPage() {
       />
 
       {companies && companies.length > 0 && (
-        <Tabs value={activeCompanyId} onValueChange={setActiveCompanyId} className="mb-4">
-          <TabsList>
-            <TabsTrigger value="all">All Companies</TabsTrigger>
-            {companies.map((c) => (
-              <TabsTrigger key={c.id} value={c.id}>
-                {c.name}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <MultiSelect
+          value={activeCompanyIds}
+          onValueChange={setActiveCompanyIds}
+          options={companies.map((c) => ({ value: c.id, label: c.name }))}
+          placeholder="All Companies"
+          className="mb-4 w-56"
+        />
       )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -116,7 +113,7 @@ export default function UnbilledEntriesPage() {
           </p>
           <Button asChild variant="outline">
             <a
-              href={`/api/unbilled-entries/export?year=${cursor.year}&month=${cursor.month}${activeCompanyId !== "all" ? `&companyId=${activeCompanyId}` : ""}`}
+              href={`/api/unbilled-entries/export?year=${cursor.year}&month=${cursor.month}${activeCompanyIds.length ? `&companyId=${activeCompanyIds.join(",")}` : ""}`}
             >
               <Download className="size-4" /> Export to Excel
             </a>
@@ -216,7 +213,7 @@ export default function UnbilledEntriesPage() {
             entry={editing}
             year={cursor.year}
             month={cursor.month}
-            defaultCompanyId={activeCompanyId === "all" ? undefined : activeCompanyId}
+            defaultCompanyId={activeCompanyIds.length === 1 ? activeCompanyIds[0] : undefined}
           />
 
           <MarkDoneDialog

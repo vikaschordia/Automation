@@ -5,6 +5,7 @@ import { assertUnbilledEntryAccess, resolveAccessibleCompanyFilter } from "@/lib
 import { listUnbilledEntries } from "@/lib/services/unbilled-entry-service";
 import { addUnbilledEntrySheet } from "@/lib/excel/unbilled-entry-sheet";
 import { excelResponseHeaders, toResponseBody, workbookToBuffer } from "@/lib/excel/task-list-sheet";
+import { parseMultiParam } from "@/lib/query-params";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     const year = Number(request.nextUrl.searchParams.get("year")) || now.getFullYear();
     const month = Number(request.nextUrl.searchParams.get("month")) || now.getMonth() + 1;
 
-    const companyFilter = await resolveAccessibleCompanyFilter(session, request.nextUrl.searchParams.get("companyId"));
+    const companyFilter = await resolveAccessibleCompanyFilter(session, parseMultiParam(request.nextUrl.searchParams, "companyId"));
     const entries = await listUnbilledEntries(year, month, companyFilter);
 
     const workbook = new ExcelJS.Workbook();

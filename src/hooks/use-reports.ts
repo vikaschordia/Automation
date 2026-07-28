@@ -20,14 +20,14 @@ export interface EmployeePerformanceRow {
 }
 
 export function useEmployeePerformanceReport(filters: {
-  companyId?: string;
-  departmentId?: string;
+  companyId?: string[];
+  departmentId?: string[];
   sortBy?: string;
   sortDir?: "asc" | "desc";
 }) {
   const params = new URLSearchParams();
-  if (filters.companyId) params.set("companyId", filters.companyId);
-  if (filters.departmentId) params.set("departmentId", filters.departmentId);
+  if (filters.companyId?.length) params.set("companyId", filters.companyId.join(","));
+  if (filters.departmentId?.length) params.set("departmentId", filters.departmentId.join(","));
   if (filters.sortBy) params.set("sortBy", filters.sortBy);
   if (filters.sortDir) params.set("sortDir", filters.sortDir);
 

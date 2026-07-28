@@ -44,6 +44,21 @@ export const EMPLOYEE_NAV: NavItem[] = [
   { href: "/reports", label: "Reports", icon: FileBarChart2 },
 ];
 
+/**
+ * Admins always get the full nav; employees get the base set plus whichever opt-in tabs they've
+ * been granted (Employee.canViewExpenses/canViewUnbilledEntries, toggled from the employee form).
+ * Shared by both Sidebar (desktop) and MobileNav so the two can't drift out of sync again — see
+ * the mobile hamburger menu bug this was fixed alongside.
+ */
+export function buildNavItems(role: Role, canViewExpenses?: boolean, canViewUnbilledEntries?: boolean): NavItem[] {
+  if (role === "ADMIN") return ADMIN_NAV;
+  return [
+    ...EMPLOYEE_NAV,
+    ...(canViewExpenses ? [{ href: "/expenses", label: "Monthly Expenses", icon: Wallet }] : []),
+    ...(canViewUnbilledEntries ? [{ href: "/unbilled-entries", label: "Monthly Unbilled Entries", icon: FileClock }] : []),
+  ];
+}
+
 export function Sidebar({
   role,
   canViewExpenses,
@@ -54,16 +69,7 @@ export function Sidebar({
   canViewUnbilledEntries?: boolean;
 }) {
   const pathname = usePathname();
-  const items =
-    role === "ADMIN"
-      ? ADMIN_NAV
-      : [
-          ...EMPLOYEE_NAV,
-          ...(canViewExpenses ? [{ href: "/expenses", label: "Monthly Expenses", icon: Wallet }] : []),
-          ...(canViewUnbilledEntries
-            ? [{ href: "/unbilled-entries", label: "Monthly Unbilled Entries", icon: FileClock }]
-            : []),
-        ];
+  const items = buildNavItems(role, canViewExpenses, canViewUnbilledEntries);
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">

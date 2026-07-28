@@ -9,7 +9,7 @@ import {
   createColumnHelper,
   type SortingState,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2, Loader2, Users } from "lucide-react";
+import { Pencil, Trash2, Loader2, Users } from "lucide-react";
 import type { TaskRow } from "@/hooks/use-tasks";
 import { PriorityBadge } from "@/components/tasks/priority-badge";
 import { EditableStatusCell, EditableProgressCell, EditableRemarksCell } from "@/components/tasks/editable-cells";
@@ -17,6 +17,7 @@ import { formatDate } from "@/lib/format";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ResizableTh } from "@/components/shared/resizable-table-head";
 import { cn } from "@/lib/utils";
 import { TASK_SORT_FIELDS, type Role } from "@/lib/constants";
 
@@ -213,39 +214,17 @@ export function TaskTable({
                 const sortable = SORTABLE_COLUMN_IDS.includes(header.column.id);
                 const sortEntry = sorting.find((s) => s.id === header.column.id);
                 return (
-                  <th
+                  <ResizableTh
                     key={header.id}
-                    style={{ width: header.getSize() }}
-                    className={cn(
-                      "relative h-10 select-none whitespace-nowrap px-3 text-left align-middle font-medium text-muted-foreground",
-                      idx === 0 && "sticky left-0 z-20 bg-muted/95",
-                    )}
-                  >
-                    {header.isPlaceholder ? null : sortable ? (
-                      <button
-                        type="button"
-                        className="flex cursor-pointer items-center gap-1 hover:text-foreground"
-                        onClick={() => {
-                          const desc = sortEntry ? !sortEntry.desc : false;
-                          onSortingChange([{ id: header.column.id, desc }]);
-                        }}
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {sortEntry ? sortEntry.desc ? <ArrowDown className="size-3" /> : <ArrowUp className="size-3" /> : (
-                          <ArrowUpDown className="size-3 opacity-30" />
-                        )}
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-1">{flexRender(header.column.columnDef.header, header.getContext())}</div>
-                    )}
-                    {header.column.getCanResize() && (
-                      <div
-                        onMouseDown={header.getResizeHandler()}
-                        onTouchStart={header.getResizeHandler()}
-                        className="absolute right-0 top-0 h-full w-1 cursor-col-resize touch-none select-none bg-transparent hover:bg-primary/40"
-                      />
-                    )}
-                  </th>
+                    header={header}
+                    sticky={idx === 0}
+                    sortable={sortable}
+                    sortDir={sortEntry ? (sortEntry.desc ? "desc" : "asc") : false}
+                    onSort={() => {
+                      const desc = sortEntry ? !sortEntry.desc : false;
+                      onSortingChange([{ id: header.column.id, desc }]);
+                    }}
+                  />
                 );
               })}
             </tr>

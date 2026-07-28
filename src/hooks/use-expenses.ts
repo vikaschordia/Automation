@@ -25,12 +25,13 @@ async function jsonOrThrow(res: Response) {
   return data;
 }
 
-export function useExpenses(year: number, month: number, companyId?: string) {
+export function useExpenses(year: number, month: number, companyId?: string[]) {
+  const companyParam = companyId?.length ? companyId.join(",") : undefined;
   return useQuery<{ expenses: ExpenseRow[] }>({
-    queryKey: ["expenses", year, month, companyId ?? "all"],
+    queryKey: ["expenses", year, month, companyParam ?? "all"],
     queryFn: async () =>
       jsonOrThrow(
-        await fetch(`/api/expenses?year=${year}&month=${month}${companyId ? `&companyId=${companyId}` : ""}`),
+        await fetch(`/api/expenses?year=${year}&month=${month}${companyParam ? `&companyId=${companyParam}` : ""}`),
       ),
   });
 }

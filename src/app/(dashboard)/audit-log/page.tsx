@@ -10,7 +10,7 @@ import { formatDateTime } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelect } from "@/components/shared/multi-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const ACTION_LABELS: Record<AuditAction, string> = {
@@ -75,35 +75,20 @@ export default function AuditLogPage() {
           value={filters.to ?? ""}
           onChange={(e) => patch({ to: e.target.value || undefined })}
         />
-        <Select
-          value={filters.entityType ?? "all"}
-          onValueChange={(v) => patch({ entityType: v === "all" ? undefined : (v as AuditEntityType) })}
-        >
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Entity" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All entities</SelectItem>
-            {AUDIT_ENTITY_TYPES.map((t) => (
-              <SelectItem key={t} value={t}>
-                {ENTITY_LABELS[t]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filters.action ?? "all"} onValueChange={(v) => patch({ action: v === "all" ? undefined : (v as AuditAction) })}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Action" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All actions</SelectItem>
-            {AUDIT_ACTIONS.map((a) => (
-              <SelectItem key={a} value={a}>
-                {ACTION_LABELS[a]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiSelect
+          value={filters.entityType ?? []}
+          onValueChange={(v) => patch({ entityType: v.length ? (v as AuditEntityType[]) : undefined })}
+          options={AUDIT_ENTITY_TYPES.map((t) => ({ value: t, label: ENTITY_LABELS[t] }))}
+          placeholder="All entities"
+          className="w-44"
+        />
+        <MultiSelect
+          value={filters.action ?? []}
+          onValueChange={(v) => patch({ action: v.length ? (v as AuditAction[]) : undefined })}
+          options={AUDIT_ACTIONS.map((a) => ({ value: a, label: ACTION_LABELS[a] }))}
+          placeholder="All actions"
+          className="w-40"
+        />
       </div>
 
       <div className="rounded-lg border bg-card">

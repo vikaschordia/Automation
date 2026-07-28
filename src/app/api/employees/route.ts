@@ -4,6 +4,7 @@ import { requireSession, apiErrorResponse } from "@/lib/session";
 import { employeeSchema } from "@/lib/validations/employee";
 import { hashPassword } from "@/lib/auth";
 import { logAudit } from "@/lib/services/audit-service";
+import { parseMultiParam } from "@/lib/query-params";
 
 const EMPLOYEE_DEFAULT_PASSWORD = process.env.EMPLOYEE_DEFAULT_PASSWORD ?? "Employee@123";
 
@@ -11,9 +12,9 @@ export async function GET(request: NextRequest) {
   try {
     await requireSession(["ADMIN"]);
     const params = request.nextUrl.searchParams;
-    const companyId = params.get("companyId") ?? undefined;
-    const departmentId = params.get("departmentId") ?? undefined;
-    const status = params.get("status") ?? undefined;
+    const companyIds = parseMultiParam(params, "companyId");
+    const departmentIds = parseMultiParam(params, "departmentId");
+    const statuses = parseMultiParam(params, "status");
     const search = params.get("search")?.trim();
 
     const employees = await prisma.employee.findMany({
@@ -21,9 +22,11 @@ export async function GET(request: NextRequest) {
         // A company filter matches an employee's primary company OR any company they're
         // additionally mapped to — e.g. filtering "Beta Traders" should surface someone whose
         // home company is Alpha Industries but who's also mapped to Beta Traders.
-        ...(companyId ? { OR: [{ companyId }, { additionalCompanies: { some: { id: companyId } } }] } : {}),
-        departmentId,
-        status: status ?? undefined,
+        ...(companyIds
+          ? { OR: [{ companyId: { in: companyIds } }, { additionalCompanies: { some: { id: { in: companyIds } } } }] }
+          : {}),
+        ...(departmentIds ? { departmentId: { in: departmentIds } } : {}),
+        ...(statuses ? { status: { in: statuses } } : {}),
         ...(search
           ? {
               OR: [

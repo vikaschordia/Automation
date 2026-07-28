@@ -109,20 +109,22 @@ export async function assertUnbilledEntryAccess(session: SessionPayload): Promis
  */
 export async function resolveAccessibleCompanyFilter(
   session: SessionPayload,
-  requestedCompanyId?: string | null,
+  requestedCompanyId?: string | string[] | null,
 ): Promise<string | string[] | undefined> {
-  if (session.role === "ADMIN") return requestedCompanyId ?? undefined;
+  const requested = Array.isArray(requestedCompanyId) ? requestedCompanyId : requestedCompanyId ? [requestedCompanyId] : [];
+
+  if (session.role === "ADMIN") return requested.length ? requested : undefined;
 
   const employee = session.employeeId
     ? await prisma.employee.findUnique({ where: { id: session.employeeId }, select: { companyId: true, additionalCompanyIds: true } })
     : null;
   const allowed = employee ? Array.from(new Set([employee.companyId, ...employee.additionalCompanyIds])) : [];
 
-  if (requestedCompanyId) {
-    if (!allowed.includes(requestedCompanyId)) {
+  if (requested.length > 0) {
+    if (!requested.every((id) => allowed.includes(id))) {
       throw new ApiError(403, "You don't have access to this company");
     }
-    return requestedCompanyId;
+    return requested;
   }
   return allowed;
 }

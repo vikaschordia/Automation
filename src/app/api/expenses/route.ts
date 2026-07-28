@@ -4,6 +4,7 @@ import { assertExpenseAccess, resolveAccessibleCompanyFilter } from "@/lib/rbac"
 import { expenseCreateSchema } from "@/lib/validations/expense";
 import { listExpenses, createExpense } from "@/lib/services/expense-service";
 import { logAudit } from "@/lib/services/audit-service";
+import { parseMultiParam } from "@/lib/query-params";
 
 function parseYearMonth(params: URLSearchParams): { year: number; month: number } {
   const now = new Date();
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     const session = await requireSession();
     await assertExpenseAccess(session);
     const { year, month } = parseYearMonth(request.nextUrl.searchParams);
-    const companyFilter = await resolveAccessibleCompanyFilter(session, request.nextUrl.searchParams.get("companyId"));
+    const companyFilter = await resolveAccessibleCompanyFilter(session, parseMultiParam(request.nextUrl.searchParams, "companyId"));
     const expenses = await listExpenses(year, month, companyFilter);
     return NextResponse.json({ expenses, year, month });
   } catch (error) {

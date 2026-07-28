@@ -4,6 +4,7 @@ import { assertUnbilledEntryAccess, resolveAccessibleCompanyFilter } from "@/lib
 import { unbilledEntryCreateSchema } from "@/lib/validations/unbilled-entry";
 import { listUnbilledEntries, createUnbilledEntry } from "@/lib/services/unbilled-entry-service";
 import { logAudit } from "@/lib/services/audit-service";
+import { parseMultiParam } from "@/lib/query-params";
 
 function parseYearMonth(params: URLSearchParams): { year: number; month: number } {
   const now = new Date();
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     const session = await requireSession();
     await assertUnbilledEntryAccess(session);
     const { year, month } = parseYearMonth(request.nextUrl.searchParams);
-    const companyFilter = await resolveAccessibleCompanyFilter(session, request.nextUrl.searchParams.get("companyId"));
+    const companyFilter = await resolveAccessibleCompanyFilter(session, parseMultiParam(request.nextUrl.searchParams, "companyId"));
     const entries = await listUnbilledEntries(year, month, companyFilter);
     return NextResponse.json({ entries, year, month });
   } catch (error) {

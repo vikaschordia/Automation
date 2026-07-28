@@ -17,11 +17,12 @@ async function jsonOrThrow(res: Response) {
   return data;
 }
 
-export function useDepartments(companyId?: string, options?: { enabled?: boolean }) {
+export function useDepartments(companyId?: string | string[], options?: { enabled?: boolean }) {
+  const companyParam = Array.isArray(companyId) ? companyId.join(",") : companyId;
   return useQuery<DepartmentRow[]>({
-    queryKey: ["departments", companyId ?? "all"],
+    queryKey: ["departments", companyParam ?? "all"],
     queryFn: async () => {
-      const res = await fetch(`/api/departments${companyId ? `?companyId=${companyId}` : ""}`);
+      const res = await fetch(`/api/departments${companyParam ? `?companyId=${companyParam}` : ""}`);
       const data = await jsonOrThrow(res);
       return data.departments;
     },

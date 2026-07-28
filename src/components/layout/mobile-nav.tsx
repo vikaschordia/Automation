@@ -7,13 +7,15 @@ import { Menu, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { ADMIN_NAV, EMPLOYEE_NAV } from "@/components/layout/sidebar";
+import { buildNavItems } from "@/components/layout/sidebar";
+import { useSession } from "@/components/layout/session-provider";
 import type { Role } from "@/lib/constants";
 
 export function MobileNav({ role }: { role: Role }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const items = role === "ADMIN" ? ADMIN_NAV : EMPLOYEE_NAV;
+  const { canViewExpenses, canViewUnbilledEntries } = useSession();
+  const items = buildNavItems(role, canViewExpenses, canViewUnbilledEntries);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

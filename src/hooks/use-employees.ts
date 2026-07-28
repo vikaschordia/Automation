@@ -32,13 +32,17 @@ async function jsonOrThrow(res: Response) {
 }
 
 export function useEmployees(
-  filters?: { companyId?: string; departmentId?: string; status?: string; search?: string },
+  filters?: { companyId?: string | string[]; departmentId?: string | string[]; status?: string | string[]; search?: string },
   options?: { enabled?: boolean },
 ) {
   const params = new URLSearchParams();
-  if (filters?.companyId) params.set("companyId", filters.companyId);
-  if (filters?.departmentId) params.set("departmentId", filters.departmentId);
-  if (filters?.status) params.set("status", filters.status);
+  const join = (v?: string | string[]) => (Array.isArray(v) ? v.join(",") : v);
+  const companyParam = join(filters?.companyId);
+  const departmentParam = join(filters?.departmentId);
+  const statusParam = join(filters?.status);
+  if (companyParam) params.set("companyId", companyParam);
+  if (departmentParam) params.set("departmentId", departmentParam);
+  if (statusParam) params.set("status", statusParam);
   if (filters?.search) params.set("search", filters.search);
 
   return useQuery<EmployeeRow[]>({

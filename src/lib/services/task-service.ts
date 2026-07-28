@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { calculateDelayDays, isOverdue, isDueToday, startOfDay, parseLocalDateString } from "@/lib/delay";
 import { formatTaskNumber } from "@/lib/task-number";
 import { ApiError } from "@/lib/session";
+import { parseMultiParam } from "@/lib/query-params";
 import { TASK_SORT_FIELDS, OPEN_TASK_STATUSES, type TaskSortField } from "@/lib/constants";
 import type { TaskCreateInput, TaskUpdateInput } from "@/lib/validations/task";
 import type { SessionPayload } from "@/lib/auth";
@@ -73,15 +74,22 @@ export function buildTaskWhere(params: URLSearchParams, session: SessionPayload)
   const search = params.get("search")?.trim();
   const taskNumberMatch = search ? /^(TSK-)?0*(\d+)$/i.exec(search) : null;
 
+  const assignedToIds = parseMultiParam(params, "assignedToId");
+  const companyIds = parseMultiParam(params, "companyId");
+  const departmentIds = parseMultiParam(params, "departmentId");
+  const categoryIds = parseMultiParam(params, "categoryId");
+  const priorities = parseMultiParam(params, "priority");
+  const statuses = parseMultiParam(params, "status");
+
   return {
     deletedAt: null,
     ...(session.role === "EMPLOYEE" ? { assignedToId: session.employeeId ?? "__none__" } : {}),
-    ...(params.get("assignedToId") && session.role === "ADMIN" ? { assignedToId: params.get("assignedToId")! } : {}),
-    ...(params.get("companyId") ? { companyId: params.get("companyId")! } : {}),
-    ...(params.get("departmentId") ? { departmentId: params.get("departmentId")! } : {}),
-    ...(params.get("categoryId") ? { categoryId: params.get("categoryId")! } : {}),
-    ...(params.get("priority") ? { priority: params.get("priority")! } : {}),
-    ...(params.get("status") ? { status: params.get("status")! } : {}),
+    ...(assignedToIds && session.role === "ADMIN" ? { assignedToId: { in: assignedToIds } } : {}),
+    ...(companyIds ? { companyId: { in: companyIds } } : {}),
+    ...(departmentIds ? { departmentId: { in: departmentIds } } : {}),
+    ...(categoryIds ? { categoryId: { in: categoryIds } } : {}),
+    ...(priorities ? { priority: { in: priorities } } : {}),
+    ...(statuses ? { status: { in: statuses } } : {}),
     ...(params.get("dueFrom") || params.get("dueTo")
       ? {
           dueDate: {

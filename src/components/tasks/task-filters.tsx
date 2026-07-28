@@ -9,7 +9,7 @@ import { TASK_PRIORITIES, TASK_STATUSES, PRIORITY_META, STATUS_META, type Role }
 import type { TaskFilters as TaskFiltersState } from "@/hooks/use-tasks";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelect } from "@/components/shared/multi-select";
 
 const BUCKET_LABELS: Record<string, string> = {
   overdue: "Overdue",
@@ -37,12 +37,12 @@ export function TaskFilters({
 
   const hasActiveFilters = !!(
     filters.search ||
-    filters.status ||
-    filters.priority ||
-    filters.companyId ||
-    filters.departmentId ||
-    filters.assignedToId ||
-    filters.categoryId ||
+    filters.status?.length ||
+    filters.priority?.length ||
+    filters.companyId?.length ||
+    filters.departmentId?.length ||
+    filters.assignedToId?.length ||
+    filters.categoryId?.length ||
     filters.bucket
   );
 
@@ -73,103 +73,58 @@ export function TaskFilters({
         />
       </div>
 
-      <Select value={filters.status ?? "all"} onValueChange={(v) => onChange({ ...filters, status: v === "all" ? undefined : v, page: 1 })}>
-        <SelectTrigger className="w-40">
-          <SelectValue placeholder="All statuses" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All statuses</SelectItem>
-          {TASK_STATUSES.map((s) => (
-            <SelectItem key={s} value={s}>
-              {STATUS_META[s].label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <MultiSelect
+        value={filters.status ?? []}
+        onValueChange={(v) => onChange({ ...filters, status: v.length ? v : undefined, page: 1 })}
+        options={TASK_STATUSES.map((s) => ({ value: s, label: STATUS_META[s].label }))}
+        placeholder="All statuses"
+        className="w-40"
+      />
 
-      <Select value={filters.priority ?? "all"} onValueChange={(v) => onChange({ ...filters, priority: v === "all" ? undefined : v, page: 1 })}>
-        <SelectTrigger className="w-36">
-          <SelectValue placeholder="All priorities" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All priorities</SelectItem>
-          {TASK_PRIORITIES.map((p) => (
-            <SelectItem key={p} value={p}>
-              {PRIORITY_META[p].label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <MultiSelect
+        value={filters.priority ?? []}
+        onValueChange={(v) => onChange({ ...filters, priority: v.length ? v : undefined, page: 1 })}
+        options={TASK_PRIORITIES.map((p) => ({ value: p, label: PRIORITY_META[p].label }))}
+        placeholder="All priorities"
+        className="w-36"
+      />
 
       {role === "ADMIN" && (
         <>
-          <Select
-            value={filters.companyId ?? "all"}
-            onValueChange={(v) => onChange({ ...filters, companyId: v === "all" ? undefined : v, departmentId: undefined, page: 1 })}
-          >
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="All companies" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All companies</SelectItem>
-              {companies?.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MultiSelect
+            value={filters.companyId ?? []}
+            onValueChange={(v) => onChange({ ...filters, companyId: v.length ? v : undefined, departmentId: undefined, page: 1 })}
+            options={companies?.map((c) => ({ value: c.id, label: c.name })) ?? []}
+            placeholder="All companies"
+            className="w-44"
+          />
 
-          <Select
-            value={filters.departmentId ?? "all"}
-            onValueChange={(v) => onChange({ ...filters, departmentId: v === "all" ? undefined : v, page: 1 })}
-            disabled={!filters.companyId}
-          >
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="All departments" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All departments</SelectItem>
-              {departments?.map((d) => (
-                <SelectItem key={d.id} value={d.id}>
-                  {d.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MultiSelect
+            value={filters.departmentId ?? []}
+            onValueChange={(v) => onChange({ ...filters, departmentId: v.length ? v : undefined, page: 1 })}
+            options={departments?.map((d) => ({ value: d.id, label: d.name })) ?? []}
+            placeholder="All departments"
+            className="w-44"
+            disabled={!filters.companyId?.length}
+          />
 
-          <Select
-            value={filters.assignedToId ?? "all"}
-            onValueChange={(v) => onChange({ ...filters, assignedToId: v === "all" ? undefined : v, page: 1 })}
-          >
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="All employees" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All employees</SelectItem>
-              {employees?.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MultiSelect
+            value={filters.assignedToId ?? []}
+            onValueChange={(v) => onChange({ ...filters, assignedToId: v.length ? v : undefined, page: 1 })}
+            options={employees?.map((e) => ({ value: e.id, label: e.name })) ?? []}
+            placeholder="All employees"
+            className="w-44"
+          />
         </>
       )}
 
-      <Select value={filters.categoryId ?? "all"} onValueChange={(v) => onChange({ ...filters, categoryId: v === "all" ? undefined : v, page: 1 })}>
-        <SelectTrigger className="w-40">
-          <SelectValue placeholder="All categories" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All categories</SelectItem>
-          {categories?.map((c) => (
-            <SelectItem key={c.id} value={c.id}>
-              {c.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <MultiSelect
+        value={filters.categoryId ?? []}
+        onValueChange={(v) => onChange({ ...filters, categoryId: v.length ? v : undefined, page: 1 })}
+        options={categories?.map((c) => ({ value: c.id, label: c.name })) ?? []}
+        placeholder="All categories"
+        className="w-40"
+      />
 
       {hasActiveFilters && (
         <Button variant="ghost" size="sm" onClick={() => onChange({ page: 1, pageSize: filters.pageSize })}>

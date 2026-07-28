@@ -39,8 +39,8 @@ export interface AuditLogFilters {
   from?: Date;
   to?: Date;
   userId?: string;
-  entityType?: AuditEntityType;
-  action?: AuditAction;
+  entityType?: AuditEntityType[];
+  action?: AuditAction[];
   search?: string;
 }
 
@@ -50,8 +50,8 @@ export async function getAuditLogs(filters: AuditLogFilters, page: number, pageS
       ? { createdAt: { ...(filters.from ? { gte: filters.from } : {}), ...(filters.to ? { lte: filters.to } : {}) } }
       : {}),
     ...(filters.userId ? { userId: filters.userId } : {}),
-    ...(filters.entityType ? { entityType: filters.entityType } : {}),
-    ...(filters.action ? { action: filters.action } : {}),
+    ...(filters.entityType?.length ? { entityType: { in: filters.entityType } } : {}),
+    ...(filters.action?.length ? { action: { in: filters.action } } : {}),
     ...(filters.search
       ? { OR: [{ summary: { contains: filters.search } }, { userName: { contains: filters.search } }] }
       : {}),

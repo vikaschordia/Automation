@@ -14,20 +14,20 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelect } from "@/components/shared/multi-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function EmployeesPage() {
-  const [companyFilter, setCompanyFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [companyFilter, setCompanyFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
 
   const { data: companies } = useCompanies();
   const { data: employees, isLoading } = useEmployees({
-    companyId: companyFilter === "all" ? undefined : companyFilter,
-    status: statusFilter === "all" ? undefined : statusFilter,
+    companyId: companyFilter,
+    status: statusFilter,
     search: debouncedSearch || undefined,
   });
   const deleteMutation = useDeleteEmployee();
@@ -60,29 +60,23 @@ export default function EmployeesPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="w-64"
         />
-        <Select value={companyFilter} onValueChange={setCompanyFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="All companies" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All companies</SelectItem>
-            {companies?.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="ACTIVE">Active</SelectItem>
-            <SelectItem value="INACTIVE">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+        <MultiSelect
+          value={companyFilter}
+          onValueChange={setCompanyFilter}
+          options={companies?.map((c) => ({ value: c.id, label: c.name })) ?? []}
+          placeholder="All companies"
+          className="w-48"
+        />
+        <MultiSelect
+          value={statusFilter}
+          onValueChange={setStatusFilter}
+          options={[
+            { value: "ACTIVE", label: "Active" },
+            { value: "INACTIVE", label: "Inactive" },
+          ]}
+          placeholder="All statuses"
+          className="w-40"
+        />
       </div>
 
       <div className="rounded-lg border bg-card">

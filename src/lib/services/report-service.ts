@@ -22,8 +22,8 @@ export interface EmployeePerformanceRow {
 }
 
 export async function getEmployeePerformanceReport(filters?: {
-  companyId?: string;
-  departmentId?: string;
+  companyId?: string[];
+  departmentId?: string[];
   employeeId?: string;
   sortBy?: string;
   sortDir?: "asc" | "desc";
@@ -36,10 +36,10 @@ export async function getEmployeePerformanceReport(filters?: {
       ...(filters?.employeeId ? { id: filters.employeeId } : {}),
       // Matches primary company OR any additional company the employee is mapped to, same as the
       // Employees list filter — an employee mapped into this company should show up in its report.
-      ...(filters?.companyId
-        ? { OR: [{ companyId: filters.companyId }, { additionalCompanies: { some: { id: filters.companyId } } }] }
+      ...(filters?.companyId?.length
+        ? { OR: [{ companyId: { in: filters.companyId } }, { additionalCompanies: { some: { id: { in: filters.companyId } } } }] }
         : {}),
-      departmentId: filters?.departmentId,
+      ...(filters?.departmentId?.length ? { departmentId: { in: filters.departmentId } } : {}),
     },
     include: {
       company: { select: { name: true } },

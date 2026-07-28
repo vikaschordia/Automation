@@ -57,12 +57,12 @@ export interface TaskFilters {
   sortBy?: string;
   sortDir?: "asc" | "desc";
   search?: string;
-  status?: string;
-  priority?: string;
-  companyId?: string;
-  departmentId?: string;
-  categoryId?: string;
-  assignedToId?: string;
+  status?: string[];
+  priority?: string[];
+  companyId?: string[];
+  departmentId?: string[];
+  categoryId?: string[];
+  assignedToId?: string[];
   dueFrom?: string;
   dueTo?: string;
   /** overdue | dueToday | dueTomorrow | highPriorityOpen — see buildTaskWhere in task-service.ts */
@@ -86,7 +86,11 @@ async function jsonOrThrow(res: Response) {
 export function buildTaskQuery(filters: TaskFilters): string {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") params.set(key, String(value));
+    if (Array.isArray(value)) {
+      if (value.length > 0) params.set(key, value.join(","));
+    } else if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
   });
   return params.toString();
 }

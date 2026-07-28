@@ -3,25 +3,27 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, apiErrorResponse } from "@/lib/session";
 import { departmentSchema } from "@/lib/validations/department";
 import { logAudit } from "@/lib/services/audit-service";
+import { parseMultiParam } from "@/lib/query-params";
 
 export async function GET(request: NextRequest) {
   try {
     const session = await requireSession();
-    const companyId = request.nextUrl.searchParams.get("companyId") ?? undefined;
+    const companyIds = parseMultiParam(request.nextUrl.searchParams, "companyId");
 
     if (session.role !== "ADMIN") {
-      // Employees may only list departments for a company they're actually mapped to — never
+      // Employees may only list departments for companies they're actually mapped to — never
       // the whole org's department list, and never without a companyId to scope it by.
-      if (!companyId) return NextResponse.json({ departments: [] });
+      if (!companyIds) return NextResponse.json({ departments: [] });
       const employee = session.employeeId
         ? await prisma.employee.findUnique({ where: { id: session.employeeId }, select: { companyId: true, additionalCompanyIds: true } })
         : null;
-      const allowed = !!employee && (employee.companyId === companyId || employee.additionalCompanyIds.includes(companyId));
+      const allowedCompanyIds = employee ? [employee.companyId, ...employee.additionalCompanyIds] : [];
+      const allowed = companyIds.every((id) => allowedCompanyIds.includes(id));
       if (!allowed) return NextResponse.json({ departments: [] });
     }
 
     const departments = await prisma.department.findMany({
-      where: companyId ? { companyId } : undefined,
+      where: companyIds ? { companyId: { in: companyIds } } : undefined,
       orderBy: [{ company: { name: "asc" } }, { name: "asc" }],
       include: { company: { select: { id: true, name: true } }, _count: { select: { employees: true, tasks: true } } },
     });

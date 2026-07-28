@@ -15,23 +15,26 @@ import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import { BulkActionBar } from "@/components/tasks/bulk-action-bar";
 import { Button } from "@/components/ui/button";
 
-const URL_FILTER_KEYS = [
+const URL_MULTI_FILTER_KEYS = [
   "status",
   "priority",
   "companyId",
   "departmentId",
   "categoryId",
   "assignedToId",
-  "dueFrom",
-  "dueTo",
-  "bucket",
 ] as const satisfies readonly (keyof TaskFiltersState)[];
+
+const URL_SINGLE_FILTER_KEYS = ["dueFrom", "dueTo", "bucket"] as const satisfies readonly (keyof TaskFiltersState)[];
 
 /** Lets links like the dashboard's stat cards (/tasks?status=PENDING, /tasks?bucket=overdue,...)
  * land on the exact matching, already-filtered task list instead of an unfiltered one. */
 function initialFiltersFromUrl(searchParams: URLSearchParams): TaskFiltersState {
   const filters: TaskFiltersState = { page: 1, pageSize: 25 };
-  for (const key of URL_FILTER_KEYS) {
+  for (const key of URL_MULTI_FILTER_KEYS) {
+    const value = searchParams.get(key);
+    if (value) filters[key] = value.split(",");
+  }
+  for (const key of URL_SINGLE_FILTER_KEYS) {
     const value = searchParams.get(key);
     if (value) filters[key] = value;
   }
@@ -98,7 +101,10 @@ function TasksPageInner() {
           role={role}
           isLoading={isLoading}
           sorting={sorting}
-          onSortingChange={setSorting}
+          onSortingChange={(next) => {
+            setSorting(next);
+            setFilters((f) => ({ ...f, page: 1 }));
+          }}
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
           onEdit={(task) => {

@@ -18,8 +18,8 @@ export interface AuditLogFilters {
   pageSize: number;
   from?: string;
   to?: string;
-  entityType?: AuditEntityType;
-  action?: AuditAction;
+  entityType?: AuditEntityType[];
+  action?: AuditAction[];
   search?: string;
 }
 
@@ -35,8 +35,8 @@ export function useAuditLogs(filters: AuditLogFilters) {
   params.set("pageSize", String(filters.pageSize));
   if (filters.from) params.set("from", filters.from);
   if (filters.to) params.set("to", filters.to);
-  if (filters.entityType) params.set("entityType", filters.entityType);
-  if (filters.action) params.set("action", filters.action);
+  if (filters.entityType?.length) params.set("entityType", filters.entityType.join(","));
+  if (filters.action?.length) params.set("action", filters.action.join(","));
   if (filters.search) params.set("search", filters.search);
 
   return useQuery<{ rows: AuditLogRow[]; total: number; page: number; pageSize: number; totalPages: number }>({

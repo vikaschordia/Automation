@@ -65,14 +65,14 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  departments Department[]
-  employees   Employee[] @relation("EmployeePrimaryCompany")
+  departments           Department[]
+  employees             Employee[]       @relation("EmployeePrimaryCompany")
   // Employees mapped here in addition to their primary company (see Employee.additionalCompanies).
-  additionalEmployees Employee[] @relation("EmployeeAdditionalCompanies", fields: [additionalEmployeeIds], references: [id])
-  additionalEmployeeIds String[] @db.ObjectId
-  tasks       Task[]
-  monthlyExpenses MonthlyExpense[]
-  unbilledEntries UnbilledEntry[]
+  additionalEmployees   Employee[]       @relation("EmployeeAdditionalCompanies", fields: [additionalEmployeeIds], references: [id])
+  additionalEmployeeIds String[]         @db.ObjectId
+  tasks                 Task[]
+  monthlyExpenses       MonthlyExpense[]
+  unbilledEntries       UnbilledEntry[]
 }
 
 model Department {
@@ -92,26 +92,26 @@ model Department {
 }
 
 model Employee {
-  id           String    @id @default(auto()) @map("_id") @db.ObjectId
-  employeeCode String    @unique
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeCode String   @unique
   name         String
   designation  String
-  email        String    @unique
+  email        String   @unique
   phone        String?
-  status       String    @default("ACTIVE") // ACTIVE | INACTIVE
+  status       String   @default("ACTIVE") // ACTIVE | INACTIVE
   joiningDate  DateTime
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  departmentId String
+  departmentId String     @db.ObjectId
   department   Department @relation(fields: [departmentId], references: [id])
   companyId    String     @db.ObjectId
   company      Company    @relation("EmployeePrimaryCompany", fields: [companyId], references: [id])
 
   // Companies this employee is also mapped to, beyond their primary company/department above —
   // e.g. so they show up as assignable when a task is created under one of these companies.
-  additionalCompanies   Company[] @relation("EmployeeAdditionalCompanies", fields: [additionalCompanyIds], references: [id])
-  additionalCompanyIds  String[]  @db.ObjectId
+  additionalCompanies  Company[] @relation("EmployeeAdditionalCompanies", fields: [additionalCompanyIds], references: [id])
+  additionalCompanyIds String[]  @db.ObjectId
 
   managerId String?    @db.ObjectId
   manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -150,20 +150,20 @@ model Counter {
 }
 
 model Task {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
   // Sequential, human-readable number assigned once at creation (see Counter model above);
   // formatted for display as `TSK-` + zero-padded string by formatTaskNumber(). Never reused or
   // renumbered, so it stays a stable, sortable proxy for creation order even though Task.id itself
   // is now an ObjectId.
-  taskNumber  Int      @unique
+  taskNumber  Int     @unique
   title       String
   description String?
   priority    String // P1_URGENT | P2_MEDIUM | P3_LOW
-  status      String   @default("PENDING") // PENDING | IN_PROGRESS | WAITING_APPROVAL | COMPLETED | DELAYED | CANCELLED | ON_HOLD
+  status      String  @default("PENDING") // PENDING | IN_PROGRESS | WAITING_APPROVAL | COMPLETED | DELAYED | CANCELLED | ON_HOLD
 
-  assignedDate   DateTime  @default(now())
-  dueDate        DateTime
-  completedDate  DateTime?
+  assignedDate  DateTime  @default(now())
+  dueDate       DateTime
+  completedDate DateTime?
 
   progressPercent Int     @default(0)
   estimatedHours  Float?
@@ -181,15 +181,15 @@ model Task {
   // as a real relation/FK — it's purely a lookup key for "find this task's sibling assignments".
   groupId String?
 
-  assignedToId String
-  assignedTo   Employee @relation("AssignedTo", fields: [assignedToId], references: [id], onUpdate: NoAction)
-  assignedById String   @db.ObjectId
-  assignedBy   User     @relation("AssignedBy", fields: [assignedById], references: [id], onUpdate: NoAction)
-  departmentId String
-  department   Department @relation(fields: [departmentId], references: [id])
-  companyId    String     @db.ObjectId
-  company      Company    @relation(fields: [companyId], references: [id])
-  categoryId   String?    @db.ObjectId
+  assignedToId String        @db.ObjectId
+  assignedTo   Employee      @relation("AssignedTo", fields: [assignedToId], references: [id], onUpdate: NoAction)
+  assignedById String        @db.ObjectId
+  assignedBy   User          @relation("AssignedBy", fields: [assignedById], references: [id], onUpdate: NoAction)
+  departmentId String        @db.ObjectId
+  department   Department    @relation(fields: [departmentId], references: [id])
+  companyId    String        @db.ObjectId
+  company      Company       @relation(fields: [companyId], references: [id])
+  categoryId   String?       @db.ObjectId
   category     TaskCategory? @relation(fields: [categoryId], references: [id])
 
   history TaskHistory[]
@@ -232,16 +232,16 @@ model MonthlyExpense {
 }
 
 model TaskHistory {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  taskId    String   @db.ObjectId
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  changedById String @db.ObjectId
-  changedBy   User   @relation(fields: [changedById], references: [id], onUpdate: NoAction)
-  action    String // CREATED | UPDATED | STATUS_CHANGED | COMPLETED | REOPENED
-  field     String?
-  oldValue  String?
-  newValue  String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  taskId      String   @db.ObjectId
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  changedById String   @db.ObjectId
+  changedBy   User     @relation(fields: [changedById], references: [id], onUpdate: NoAction)
+  action      String // CREATED | UPDATED | STATUS_CHANGED | COMPLETED | REOPENED
+  field       String?
+  oldValue    String?
+  newValue    String?
+  createdAt   DateTime @default(now())
 
   @@index([taskId])
   @@index([createdAt])

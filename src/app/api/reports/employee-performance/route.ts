@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, apiErrorResponse } from "@/lib/session";
 import { getEmployeePerformanceReport } from "@/lib/services/report-service";
+import { parseMultiParam } from "@/lib/query-params";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,8 +12,8 @@ export async function GET(request: NextRequest) {
     const rows = await getEmployeePerformanceReport(
       session.role === "ADMIN"
         ? {
-            companyId: params.get("companyId") ?? undefined,
-            departmentId: params.get("departmentId") ?? undefined,
+            companyId: parseMultiParam(params, "companyId"),
+            departmentId: parseMultiParam(params, "departmentId"),
             sortBy: params.get("sortBy") ?? undefined,
             sortDir: params.get("sortDir") === "desc" ? "desc" : "asc",
           }

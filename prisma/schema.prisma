@@ -313,3 +313,12 @@ model ChatRead {
   userId     String   @unique @db.ObjectId
   lastReadAt DateTime @default(now())
 }
+
+// Same single-timestamp-marker shape as ChatRead, but for the notification bell's task-assignment
+// items — kept as its own model since it's an independent "unread" from chat mentions (see
+// getNotifications in notification-service.ts).
+model TaskAssignmentRead {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @unique @db.ObjectId
+  lastReadAt DateTime @default(now())
+}

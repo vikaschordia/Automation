@@ -117,6 +117,16 @@ export function ChatWidget() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ui.panel]);
 
+  // Lets the notification bell (notification-bell.tsx) open this widget for a chat-mention item,
+  // without needing a shared store — this floating widget has no route of its own to navigate to.
+  useEffect(() => {
+    function handleOpenTeamChat() {
+      updateUi({ panel: "open" });
+    }
+    window.addEventListener("open-team-chat", handleOpenTeamChat);
+    return () => window.removeEventListener("open-team-chat", handleOpenTeamChat);
+  }, []);
+
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (ui.panel === "open" && listRef.current) {

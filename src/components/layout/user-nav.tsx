@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon, KeyRound } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -12,11 +13,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ChangePasswordDialog } from "@/components/layout/change-password-dialog";
 import { initials } from "@/lib/format";
 
 export function UserNav({ name, email, role }: { name: string; email: string; role: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -45,10 +48,15 @@ export function UserNav({ name, email, role }: { name: string; email: string; ro
           <span className="text-xs font-normal text-muted-foreground">{role === "ADMIN" ? "Administrator" : "Employee"}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => setChangePasswordOpen(true)}>
+          <KeyRound className="size-4" /> Change password
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={handleLogout}>
           <LogOut className="size-4" /> Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
+      <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
     </DropdownMenu>
   );
 }
